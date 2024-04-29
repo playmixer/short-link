@@ -122,6 +122,7 @@ func Test_shortHandle(t *testing.T) {
 			result := w.Result()
 			assert.Equal(t, tt.want.StatusCode, result.StatusCode)
 			assert.Equal(t, tt.want.ContentType, result.Header.Get("Content-type"))
+			result.Body.Close()
 
 		})
 	}
