@@ -6,13 +6,19 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/playmixer/short-link/internal/storage"
 )
 
+type Storage interface {
+	Add(key, value string)
+	Get(key string) (string, error)
+}
+
 var (
-	store *storage.Store
+	store Storage
 )
 
 func init() {
@@ -29,13 +35,15 @@ func mainHandle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Add("Content-Type", "text/plain")
+
 	b, err := io.ReadAll(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	_, err = r.URL.Parse(string(b))
+	_, err = url.ParseRequestURI(string(b))
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -53,6 +61,7 @@ func shortHandle(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
+	w.Header().Add("Content-Type", "text/plain")
 
 	id := r.URL.Path
 	id = strings.ReplaceAll(id, "/", "")
