@@ -1,12 +1,7 @@
 package storage
 
 import (
-	"fmt"
 	"sync"
-)
-
-var (
-	ErrNotFoundKey = fmt.Errorf("not found value by key")
 )
 
 type Store struct {
