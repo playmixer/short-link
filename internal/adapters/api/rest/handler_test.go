@@ -1,4 +1,4 @@
-package server
+package rest_test
 
 import (
 	"io"
@@ -8,8 +8,17 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/playmixer/short-link/internal/adapters/api/rest"
+	"github.com/playmixer/short-link/internal/adapters/config"
+	"github.com/playmixer/short-link/internal/adapters/storage"
+	"github.com/playmixer/short-link/internal/adapters/storage/memory"
+	"github.com/playmixer/short-link/internal/core/shortner"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+)
+
+var (
+	cfg = config.Init()
 )
 
 func Test_mainHandle(t *testing.T) {
@@ -66,7 +75,9 @@ func Test_mainHandle(t *testing.T) {
 		},
 	}
 
-	srv := New()
+	store, _ := storage.NewStore(&storage.Config{Memory: &memory.Config{}})
+	s := shortner.New(store)
+	srv := rest.New(s, rest.Addr(cfg.Api.Rest.Addr), rest.BaseUrl(cfg.BaseUrl))
 	router := srv.SetupRouter()
 
 	for _, tt := range tests {
@@ -117,7 +128,9 @@ func Test_shortHandle(t *testing.T) {
 		},
 	}
 
-	srv := New()
+	store, _ := storage.NewStore(&storage.Config{Memory: &memory.Config{}})
+	s := shortner.New(store)
+	srv := rest.New(s, rest.Addr(cfg.Api.Rest.Addr), rest.BaseUrl(cfg.BaseUrl))
 	router := srv.SetupRouter()
 
 	for _, tt := range tests {

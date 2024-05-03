@@ -1,9 +1,8 @@
-package server
+package rest
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/playmixer/short-link/internal/logger"
-	"github.com/playmixer/short-link/internal/storage"
+	"github.com/playmixer/short-link/internal/adapters/logger/print"
 )
 
 type Logger interface {
@@ -13,26 +12,30 @@ type Logger interface {
 	DEBUG(t ...any)
 }
 
-type Storage interface {
-	Add(key, value string)
+type Store interface {
+	Set(key, value string)
 	Get(key string) (string, error)
 }
 
+type Shortner interface {
+	Shorty(link string) (string, error)
+	GetUrl(short string) (string, error)
+}
+
 type Server struct {
-	addr  string
-	port  string
-	log   Logger
-	store Storage
+	addr    string
+	log     Logger
+	short   Shortner
+	baseUrl string
 }
 
 type Option func(s *Server)
 
-func New(options ...Option) *Server {
+func New(short Shortner, options ...Option) *Server {
 	srv := &Server{
-		addr:  "localhost",
-		port:  "8080",
-		log:   logger.New(),
-		store: storage.New(),
+		addr:  "localhost:8080",
+		log:   print.New(),
+		short: short,
 	}
 
 	for _, opt := range options {
@@ -42,15 +45,15 @@ func New(options ...Option) *Server {
 	return srv
 }
 
-func OptionAddr(addr string) func(s *Server) {
+func BaseUrl(url string) func(*Server) {
 	return func(s *Server) {
-		s.addr = addr
+		s.baseUrl = url
 	}
 }
 
-func OptionPort(port string) func(s *Server) {
+func Addr(addr string) func(s *Server) {
 	return func(s *Server) {
-		s.port = port
+		s.addr = addr
 	}
 }
 
@@ -71,5 +74,5 @@ func (s *Server) SetupRouter() *gin.Engine {
 
 func (s *Server) Run() error {
 	r := s.SetupRouter()
-	return r.Run()
+	return r.Run(s.addr)
 }

@@ -1,4 +1,4 @@
-package server
+package rest
 
 import (
 	"fmt"
@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/playmixer/short-link/pkg/util"
 )
 
 func (s *Server) mainHandle(c *gin.Context) {
@@ -26,10 +25,13 @@ func (s *Server) mainHandle(c *gin.Context) {
 		return
 	}
 
-	sLink := util.RandomString(6)
-	s.store.Add(sLink, string(b))
+	sLink, err := s.short.Shorty(string(b))
+	if err != nil {
+		c.Writer.WriteHeader(http.StatusBadRequest)
+		return
+	}
 
-	c.String(http.StatusCreated, fmt.Sprintf("http://localhost:8080/%s", sLink))
+	c.String(http.StatusCreated, fmt.Sprintf("%s/%s", s.baseUrl, sLink))
 }
 
 func (s *Server) shortHandle(c *gin.Context) {
@@ -43,7 +45,7 @@ func (s *Server) shortHandle(c *gin.Context) {
 		s.log.ERROR(fmt.Sprintf("page `%s` not found", id))
 		return
 	}
-	url, err := s.store.Get(id)
+	url, err := s.short.GetUrl(id)
 	if err != nil {
 		c.Writer.WriteHeader(http.StatusBadRequest)
 		s.log.ERROR(fmt.Sprintf("page not found by id `%s`, err: %e", id, err))

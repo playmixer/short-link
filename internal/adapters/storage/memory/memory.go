@@ -1,7 +1,12 @@
-package storage
+package memory
 
 import (
+	"fmt"
 	"sync"
+)
+
+var (
+	ErrNotFoundKey = fmt.Errorf("not found value by key")
 )
 
 type Store struct {
@@ -9,17 +14,18 @@ type Store struct {
 	mu   sync.Mutex
 }
 
-func New() *Store {
+func New(cfg *Config) *Store {
 	return &Store{
 		data: make(map[string]string),
 		mu:   sync.Mutex{},
 	}
 }
 
-func (s *Store) Add(key, value string) {
+func (s *Store) Set(key, value string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.data[key] = value
+	return nil
 }
 
 func (s *Store) Get(key string) (string, error) {
