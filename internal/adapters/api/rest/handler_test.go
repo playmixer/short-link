@@ -29,19 +29,19 @@ func initConfig() {
 		return
 	}
 	cfg = &config.Config{
-		Api:   api.Config{Rest: &rest.Config{}},
+		API:   api.Config{Rest: &rest.Config{}},
 		Store: storage.Config{Memory: &memory.Config{}},
 	}
 
-	flag.StringVar(&cfg.Api.Rest.Addr, "a", "localhost:8080", "address listen")
-	flag.StringVar(&cfg.BaseUrl, "b", "http://localhost:8080", "base url")
+	flag.StringVar(&cfg.API.Rest.Addr, "a", "localhost:8080", "address listen")
+	flag.StringVar(&cfg.BaseURL, "b", "http://localhost:8080", "base url")
 
 	flag.Parse()
 }
 
 func Test_mainHandle(t *testing.T) {
 	initConfig()
-	fmt.Println("a=", cfg.Api.Rest.Addr)
+	fmt.Println("a=", cfg.API.Rest.Addr)
 	tests := []struct {
 		name string
 		want struct {
@@ -97,7 +97,7 @@ func Test_mainHandle(t *testing.T) {
 
 	store, _ := storage.NewStore(&storage.Config{Memory: &memory.Config{}})
 	s := shortner.New(store)
-	srv := rest.New(s, rest.Addr(cfg.Api.Rest.Addr), rest.BaseUrl(cfg.BaseUrl))
+	srv := rest.New(s, rest.Addr(cfg.API.Rest.Addr), rest.BaseUrl(cfg.BaseURL))
 	router := srv.SetupRouter()
 
 	for _, tt := range tests {
@@ -151,7 +151,7 @@ func Test_shortHandle(t *testing.T) {
 
 	store, _ := storage.NewStore(&storage.Config{Memory: &memory.Config{}})
 	s := shortner.New(store)
-	srv := rest.New(s, rest.Addr(cfg.Api.Rest.Addr), rest.BaseUrl(cfg.BaseUrl))
+	srv := rest.New(s, rest.Addr(cfg.API.Rest.Addr), rest.BaseUrl(cfg.BaseURL))
 	router := srv.SetupRouter()
 
 	for _, tt := range tests {

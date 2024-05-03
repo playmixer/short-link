@@ -11,21 +11,21 @@ import (
 )
 
 type Config struct {
-	Api      api.Config
+	API      api.Config
 	Store    storage.Config
 	Shortner shortner.Config
-	BaseUrl  string
+	BaseURL  string
 }
 
 func Init() *Config {
 
 	cfg := Config{
-		Api:   api.Config{Rest: &rest.Config{}},
+		API:   api.Config{Rest: &rest.Config{}},
 		Store: storage.Config{Memory: &memory.Config{}},
 	}
 
-	flag.StringVar(&cfg.Api.Rest.Addr, "a", "localhost:8080", "address listen")
-	flag.StringVar(&cfg.BaseUrl, "b", "http://localhost:8080", "base url")
+	flag.StringVar(&cfg.API.Rest.Addr, "a", "localhost:8080", "address listen")
+	flag.StringVar(&cfg.BaseURL, "b", "http://localhost:8080", "base url")
 
 	flag.Parse()
 
