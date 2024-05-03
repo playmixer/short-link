@@ -1,6 +1,8 @@
 package rest_test
 
 import (
+	"flag"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -8,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/playmixer/short-link/internal/adapters/api"
 	"github.com/playmixer/short-link/internal/adapters/api/rest"
 	"github.com/playmixer/short-link/internal/adapters/config"
 	"github.com/playmixer/short-link/internal/adapters/storage"
@@ -18,10 +21,27 @@ import (
 )
 
 var (
-	cfg = config.Init()
+	cfg *config.Config
 )
 
+func initConfig() {
+	if cfg != nil {
+		return
+	}
+	cfg = &config.Config{
+		Api:   api.Config{Rest: &rest.Config{}},
+		Store: storage.Config{Memory: &memory.Config{}},
+	}
+
+	flag.StringVar(&cfg.Api.Rest.Addr, "a", "localhost:8080", "address listen")
+	flag.StringVar(&cfg.BaseUrl, "b", "http://localhost:8080", "base url")
+
+	flag.Parse()
+}
+
 func Test_mainHandle(t *testing.T) {
+	initConfig()
+	fmt.Println("a=", cfg.Api.Rest.Addr)
 	tests := []struct {
 		name string
 		want struct {
@@ -103,6 +123,7 @@ func Test_mainHandle(t *testing.T) {
 }
 
 func Test_shortHandle(t *testing.T) {
+	initConfig()
 	tests := []struct {
 		name string
 		want struct {
