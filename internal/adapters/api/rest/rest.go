@@ -19,14 +19,14 @@ type Store interface {
 
 type Shortner interface {
 	Shorty(link string) (string, error)
-	GetUrl(short string) (string, error)
+	GetURL(short string) (string, error)
 }
 
 type Server struct {
 	addr    string
 	log     Logger
 	short   Shortner
-	baseUrl string
+	baseURL string
 }
 
 type Option func(s *Server)
@@ -45,9 +45,9 @@ func New(short Shortner, options ...Option) *Server {
 	return srv
 }
 
-func BaseUrl(url string) func(*Server) {
+func BaseURL(url string) func(*Server) {
 	return func(s *Server) {
-		s.baseUrl = url
+		s.baseURL = url
 	}
 }
 

@@ -97,7 +97,7 @@ func Test_mainHandle(t *testing.T) {
 
 	store, _ := storage.NewStore(&storage.Config{Memory: &memory.Config{}})
 	s := shortner.New(store)
-	srv := rest.New(s, rest.Addr(cfg.API.Rest.Addr), rest.BaseUrl(cfg.BaseURL))
+	srv := rest.New(s, rest.Addr(cfg.API.Rest.Addr), rest.BaseURL(cfg.BaseURL))
 	router := srv.SetupRouter()
 
 	for _, tt := range tests {
@@ -151,7 +151,7 @@ func Test_shortHandle(t *testing.T) {
 
 	store, _ := storage.NewStore(&storage.Config{Memory: &memory.Config{}})
 	s := shortner.New(store)
-	srv := rest.New(s, rest.Addr(cfg.API.Rest.Addr), rest.BaseUrl(cfg.BaseURL))
+	srv := rest.New(s, rest.Addr(cfg.API.Rest.Addr), rest.BaseURL(cfg.BaseURL))
 	router := srv.SetupRouter()
 
 	for _, tt := range tests {

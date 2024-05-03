@@ -31,7 +31,7 @@ func (s *Server) mainHandle(c *gin.Context) {
 		return
 	}
 
-	c.String(http.StatusCreated, fmt.Sprintf("%s/%s", s.baseUrl, sLink))
+	c.String(http.StatusCreated, fmt.Sprintf("%s/%s", s.baseURL, sLink))
 }
 
 func (s *Server) shortHandle(c *gin.Context) {
@@ -45,7 +45,7 @@ func (s *Server) shortHandle(c *gin.Context) {
 		s.log.ERROR(fmt.Sprintf("page `%s` not found", id))
 		return
 	}
-	url, err := s.short.GetUrl(id)
+	url, err := s.short.GetURL(id)
 	if err != nil {
 		c.Writer.WriteHeader(http.StatusBadRequest)
 		s.log.ERROR(fmt.Sprintf("page not found by id `%s`, err: %e", id, err))

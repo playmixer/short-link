@@ -8,7 +8,7 @@ import (
 
 type ShortI interface {
 	Shorty(url string) (string, error)
-	GetUrl(short string) (string, error)
+	GetURL(short string) (string, error)
 }
 
 type Store interface {
@@ -48,7 +48,7 @@ func (s *Shortner) Shorty(link string) (string, error) {
 	return sLink, nil
 }
 
-func (s *Shortner) GetUrl(short string) (string, error) {
+func (s *Shortner) GetURL(short string) (string, error) {
 
 	url, err := s.store.Get(short)
 	if err != nil {

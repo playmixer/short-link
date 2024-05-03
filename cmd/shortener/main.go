@@ -22,7 +22,7 @@ func main() {
 	srv := rest.New(
 		short,
 		rest.Addr(cfg.API.Rest.Addr),
-		rest.BaseUrl(cfg.BaseURL),
+		rest.BaseURL(cfg.BaseURL),
 	)
 	log.Fatal(srv.Run())
 }
