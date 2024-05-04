@@ -10,7 +10,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/playmixer/short-link/internal/adapters/api"
 	"github.com/playmixer/short-link/internal/adapters/api/rest"
 	"github.com/playmixer/short-link/internal/adapters/config"
 	"github.com/playmixer/short-link/internal/adapters/storage"
@@ -28,13 +27,7 @@ func initConfig() {
 	if cfg != nil {
 		return
 	}
-	cfg = &config.Config{
-		API:   api.Config{Rest: &rest.Config{}},
-		Store: storage.Config{Memory: &memory.Config{}},
-	}
-
-	flag.StringVar(&cfg.API.Rest.Addr, "a", "localhost:8080", "address listen")
-	flag.StringVar(&cfg.BaseURL, "b", "http://localhost:8080", "base url")
+	cfg = config.Init()
 
 	flag.Parse()
 }

@@ -1,5 +1,5 @@
 package rest
 
 type Config struct {
-	Addr string
+	Addr string `env:"SERVER_ADDRESS"`
 }
