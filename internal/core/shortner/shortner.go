@@ -1,9 +1,14 @@
 package shortner
 
 import (
+	"fmt"
 	"net/url"
 
 	"github.com/playmixer/short-link/pkg/util"
+)
+
+var (
+	LengthShortLink uint = 6
 )
 
 type ShortI interface {
@@ -35,24 +40,22 @@ func New(s Store, options ...Option) *Shortner {
 }
 
 func (s *Shortner) Shorty(link string) (string, error) {
-	_, err := url.Parse(link)
-	if err != nil {
-		return "", err
+	if _, err := url.Parse(link); err != nil {
+		return "", fmt.Errorf("error parsing link: %w", err)
 	}
 
-	sLink := util.RandomString(6)
-	err = s.store.Set(sLink, link)
+	sLink := util.RandomString(LengthShortLink)
+	err := s.store.Set(sLink, link)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("error setting link: %w", err)
 	}
 	return sLink, nil
 }
 
 func (s *Shortner) GetURL(short string) (string, error) {
-
 	url, err := s.store.Get(short)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("error getting url: %w", err)
 	}
-	return url, err
+	return url, nil
 }

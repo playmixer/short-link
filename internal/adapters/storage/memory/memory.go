@@ -24,6 +24,9 @@ func New(cfg *Config) *Store {
 func (s *Store) Set(key, value string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if _, ok := s.data[key]; ok {
+		return errors.New("short link is exists")
+	}
 	s.data[key] = value
 	return nil
 }

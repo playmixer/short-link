@@ -1,6 +1,8 @@
 package rest
 
 import (
+	"fmt"
+
 	"github.com/gin-gonic/gin"
 	"github.com/playmixer/short-link/internal/adapters/logger/printlog"
 )
@@ -74,9 +76,8 @@ func (s *Server) SetupRouter() *gin.Engine {
 
 func (s *Server) Run() error {
 	r := s.SetupRouter()
-	err := r.Run(s.addr)
-	if err != nil {
-		return err
+	if err := r.Run(s.addr); err != nil {
+		return fmt.Errorf("server has failed: %w", err)
 	}
 	return nil
 }

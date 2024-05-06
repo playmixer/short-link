@@ -1,10 +1,14 @@
 package util
 
 import (
-	"fmt"
 	"math/rand"
 )
 
-func RandomString(len uint) string {
-	return fmt.Sprintf("%x", rand.Uint32())
+func RandomString(n uint) string {
+	var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letterRunes[rand.Intn(len(letterRunes))]
+	}
+	return string(b)
 }
