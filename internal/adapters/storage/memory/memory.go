@@ -1,12 +1,12 @@
 package memory
 
 import (
-	"fmt"
+	"errors"
 	"sync"
 )
 
 var (
-	ErrNotFoundKey = fmt.Errorf("not found value by key")
+	ErrNotFoundKey = errors.New("not found value by key")
 )
 
 type Store struct {

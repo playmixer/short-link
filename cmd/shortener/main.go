@@ -10,7 +10,6 @@ import (
 )
 
 func main() {
-
 	cfg := config.Init()
 
 	store, err := storage.NewStore(&cfg.Store)

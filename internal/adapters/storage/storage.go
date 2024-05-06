@@ -1,7 +1,7 @@
 package storage
 
 import (
-	"fmt"
+	"errors"
 
 	"github.com/playmixer/short-link/internal/adapters/storage/memory"
 )
@@ -20,5 +20,5 @@ func NewStore(cfg *Config) (Store, error) {
 		return memory.New(cfg.Memory), nil
 	}
 
-	return nil, fmt.Errorf("storage not found")
+	return nil, errors.New("storage not found")
 }

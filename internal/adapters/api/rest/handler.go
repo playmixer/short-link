@@ -45,12 +45,12 @@ func (s *Server) shortHandle(c *gin.Context) {
 		s.log.ERROR(fmt.Sprintf("page `%s` not found", id))
 		return
 	}
-	url, err := s.short.GetURL(id)
+	link, err := s.short.GetURL(id)
 	if err != nil {
 		c.Writer.WriteHeader(http.StatusBadRequest)
 		s.log.ERROR(fmt.Sprintf("page not found by id `%s`, err: %e", id, err))
 		return
 	}
-	c.Writer.Header().Add("Location", url)
+	c.Writer.Header().Add("Location", link)
 	c.Writer.WriteHeader(http.StatusTemporaryRedirect)
 }

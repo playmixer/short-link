@@ -150,14 +150,13 @@ func Test_shortHandle(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodGet, "/QW23qq", nil)
+			r := httptest.NewRequest(http.MethodGet, "/QW23qq", http.NoBody)
 			router.ServeHTTP(w, r)
 
 			result := w.Result()
 			assert.Equal(t, tt.want.StatusCode, result.StatusCode)
 			assert.Equal(t, tt.want.ContentType, result.Header.Get("Content-type"))
-			result.Body.Close()
-
+			_ = result.Body.Close()
 		})
 	}
 }

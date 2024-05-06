@@ -22,7 +22,6 @@ type Config struct {
 }
 
 func Init() *Config {
-
 	cfg := Config{
 		API:   api.Config{Rest: &rest.Config{}},
 		Store: storage.Config{Memory: &memory.Config{}},
