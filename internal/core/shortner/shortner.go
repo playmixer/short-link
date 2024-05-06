@@ -53,9 +53,9 @@ func (s *Shortner) Shorty(link string) (string, error) {
 }
 
 func (s *Shortner) GetURL(short string) (string, error) {
-	url, err := s.store.Get(short)
+	link, err := s.store.Get(short)
 	if err != nil {
-		return "", fmt.Errorf("error getting url: %w", err)
+		return "", fmt.Errorf("error getting link: %w", err)
 	}
-	return url, nil
+	return link, nil
 }
