@@ -41,10 +41,15 @@ func (s *Shortner) Shorty(link string) (string, error) {
 		return "", fmt.Errorf("error parsing link: %w", err)
 	}
 
-	for i := 0; i < NumberOfTryGenShortLink; i++ {
+	var i int
+	for {
 		sLink := util.RandomString(LengthShortLink)
 		if err := s.store.Set(sLink, link); err == nil {
 			return sLink, nil
+		}
+		i++
+		if i >= NumberOfTryGenShortLink {
+			break
 		}
 	}
 
