@@ -1,6 +1,7 @@
 package shortner
 
 import (
+	"errors"
 	"fmt"
 	"net/url"
 
@@ -8,13 +9,9 @@ import (
 )
 
 var (
-	LengthShortLink uint = 6
+	LengthShortLink         uint = 6
+	NumberOfTryGenShortLink      = 3
 )
-
-type ShortI interface {
-	Shorty(url string) (string, error)
-	GetURL(short string) (string, error)
-}
 
 type Store interface {
 	Get(short string) (string, error)
@@ -44,12 +41,14 @@ func (s *Shortner) Shorty(link string) (string, error) {
 		return "", fmt.Errorf("error parsing link: %w", err)
 	}
 
-	sLink := util.RandomString(LengthShortLink)
-	err := s.store.Set(sLink, link)
-	if err != nil {
-		return "", fmt.Errorf("error setting link: %w", err)
+	for i := 0; i < NumberOfTryGenShortLink; i++ {
+		sLink := util.RandomString(LengthShortLink)
+		if err := s.store.Set(sLink, link); err == nil {
+			return sLink, nil
+		}
 	}
-	return sLink, nil
+
+	return "", errors.New("failed to generate a unique short link")
 }
 
 func (s *Shortner) GetURL(short string) (string, error) {

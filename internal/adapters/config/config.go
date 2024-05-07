@@ -2,7 +2,7 @@ package config
 
 import (
 	"flag"
-	"log"
+	"fmt"
 
 	"github.com/caarlos0/env/v11"
 	"github.com/joho/godotenv"
@@ -21,7 +21,7 @@ type Config struct {
 	BaseURL  string `env:"BASE_URL"`
 }
 
-func Init() *Config {
+func Init() (*Config, error) {
 	cfg := Config{
 		API:   api.Config{Rest: &rest.Config{}},
 		Store: storage.Config{Memory: &memory.Config{}},
@@ -34,8 +34,8 @@ func Init() *Config {
 	_ = godotenv.Load(".env")
 
 	if err := env.Parse(&cfg); err != nil {
-		log.Fatal(err)
+		return nil, fmt.Errorf("error parse config %w", err)
 	}
 
-	return &cfg
+	return &cfg, nil
 }

@@ -4,15 +4,7 @@ import (
 	"fmt"
 
 	"github.com/gin-gonic/gin"
-	"github.com/playmixer/short-link/internal/adapters/logger/printlog"
 )
-
-type Logger interface {
-	INFO(t ...any)
-	WARN(t ...any)
-	ERROR(t ...any)
-	DEBUG(t ...any)
-}
 
 type Store interface {
 	Set(key, value string)
@@ -26,7 +18,6 @@ type Shortner interface {
 
 type Server struct {
 	addr    string
-	log     Logger
 	short   Shortner
 	baseURL string
 }
@@ -36,7 +27,6 @@ type Option func(s *Server)
 func New(short Shortner, options ...Option) *Server {
 	srv := &Server{
 		addr:  "localhost:8080",
-		log:   printlog.New(),
 		short: short,
 	}
 
@@ -56,12 +46,6 @@ func BaseURL(url string) func(*Server) {
 func Addr(addr string) func(s *Server) {
 	return func(s *Server) {
 		s.addr = addr
-	}
-}
-
-func OptionLogger(logger Logger) func(s *Server) {
-	return func(s *Server) {
-		s.log = logger
 	}
 }
 

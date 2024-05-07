@@ -3,9 +3,9 @@ package rest
 import (
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -15,6 +15,7 @@ func (s *Server) mainHandle(c *gin.Context) {
 
 	b, err := io.ReadAll(c.Request.Body)
 	if err != nil {
+		log.Printf("can`t read body from request, error: %s", err)
 		c.Writer.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -27,7 +28,8 @@ func (s *Server) mainHandle(c *gin.Context) {
 
 	sLink, err := s.short.Shorty(string(b))
 	if err != nil {
-		c.Writer.WriteHeader(http.StatusBadRequest)
+		log.Printf("can`t shorted URI `%s`, error: %s", b, err)
+		c.Writer.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
@@ -37,20 +39,18 @@ func (s *Server) mainHandle(c *gin.Context) {
 func (s *Server) shortHandle(c *gin.Context) {
 	c.Writer.Header().Add("Content-Type", "text/plain")
 
-	id := c.Request.URL.Path
-	id = strings.ReplaceAll(id, "/", "")
-
+	id := c.Param("id")
 	if id == "" {
 		c.Writer.WriteHeader(http.StatusBadRequest)
-		s.log.ERROR(fmt.Sprintf("page `%s` not found", id))
 		return
 	}
+
 	link, err := s.short.GetURL(id)
 	if err != nil {
 		c.Writer.WriteHeader(http.StatusBadRequest)
-		s.log.ERROR(fmt.Sprintf("page not found by id `%s`, err: %e", id, err))
 		return
 	}
+
 	c.Writer.Header().Add("Location", link)
 	c.Writer.WriteHeader(http.StatusTemporaryRedirect)
 }

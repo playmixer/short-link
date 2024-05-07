@@ -27,7 +27,7 @@ func initConfig() {
 	if cfg != nil {
 		return
 	}
-	cfg = config.Init()
+	cfg, _ = config.Init()
 
 	flag.Parse()
 }

@@ -2,6 +2,7 @@ package memory
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 )
 
@@ -11,13 +12,13 @@ var (
 
 type Store struct {
 	data map[string]string
-	mu   sync.Mutex
+	mu   *sync.Mutex
 }
 
 func New(cfg *Config) *Store {
 	return &Store{
 		data: make(map[string]string),
-		mu:   sync.Mutex{},
+		mu:   &sync.Mutex{},
 	}
 }
 
@@ -25,7 +26,7 @@ func (s *Store) Set(key, value string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if _, ok := s.data[key]; ok {
-		return errors.New("short link is exists")
+		return fmt.Errorf("short link `%s` is exists", key)
 	}
 	s.data[key] = value
 	return nil
