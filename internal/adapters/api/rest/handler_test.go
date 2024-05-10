@@ -95,7 +95,8 @@ func Test_mainHandle(t *testing.T) {
 
 	store, err := storage.NewStore(&storage.Config{Memory: &memory.Config{}})
 	if err != nil {
-		t.Fatalf("failed initialize storage: %v", err)
+		t.Errorf("failed initialize storage: %v", err)
+		return
 	}
 	s := shortner.New(store)
 	srv := rest.New(s, rest.Addr(cfg.API.Rest.Addr), rest.BaseURL(cfg.BaseURL))
@@ -152,7 +153,8 @@ func Test_shortHandle(t *testing.T) {
 
 	store, err := storage.NewStore(&storage.Config{Memory: &memory.Config{}})
 	if err != nil {
-		t.Fatalf("failed initialize storage: %v", err)
+		t.Errorf("failed initialize storage: %v", err)
+		return
 	}
 	s := shortner.New(store)
 	srv := rest.New(s, rest.Addr(cfg.API.Rest.Addr), rest.BaseURL(cfg.BaseURL))
