@@ -28,7 +28,7 @@ func (s *Server) mainHandle(c *gin.Context) {
 
 	sLink, err := s.short.Shorty(string(b))
 	if err != nil {
-		log.Printf("can`t shorted URI `%s`, error: %s", b, err)
+		log.Printf("can`t shorted URI `%s`, error: %v", b, err)
 		c.Writer.WriteHeader(http.StatusInternalServerError)
 		return
 	}

@@ -23,17 +23,21 @@ var (
 	cfg *config.Config
 )
 
-func initConfig() {
+func initConfig(t *testing.T) {
 	if cfg != nil {
 		return
 	}
-	cfg, _ = config.Init()
+	var err error
+	cfg, err = config.Init()
+	if err != nil {
+		t.Fatalf("failed initialize config: %v", err)
+	}
 
 	flag.Parse()
 }
 
 func Test_mainHandle(t *testing.T) {
-	initConfig()
+	initConfig(t)
 	fmt.Println("a=", cfg.API.Rest.Addr)
 	tests := []struct {
 		name string
@@ -88,7 +92,10 @@ func Test_mainHandle(t *testing.T) {
 		},
 	}
 
-	store, _ := storage.NewStore(&storage.Config{Memory: &memory.Config{}})
+	store, err := storage.NewStore(&storage.Config{Memory: &memory.Config{}})
+	if err != nil {
+		t.Fatalf("failed initialize storage: %v", err)
+	}
 	s := shortner.New(store)
 	srv := rest.New(s, rest.Addr(cfg.API.Rest.Addr), rest.BaseURL(cfg.BaseURL))
 	router := srv.SetupRouter()
@@ -116,7 +123,7 @@ func Test_mainHandle(t *testing.T) {
 }
 
 func Test_shortHandle(t *testing.T) {
-	initConfig()
+	initConfig(t)
 	tests := []struct {
 		name string
 		want struct {
@@ -142,7 +149,10 @@ func Test_shortHandle(t *testing.T) {
 		},
 	}
 
-	store, _ := storage.NewStore(&storage.Config{Memory: &memory.Config{}})
+	store, err := storage.NewStore(&storage.Config{Memory: &memory.Config{}})
+	if err != nil {
+		t.Fatalf("failed initialize storage: %v", err)
+	}
 	s := shortner.New(store)
 	srv := rest.New(s, rest.Addr(cfg.API.Rest.Addr), rest.BaseURL(cfg.BaseURL))
 	router := srv.SetupRouter()

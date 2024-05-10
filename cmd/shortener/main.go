@@ -14,13 +14,13 @@ import (
 func main() {
 	cfg, err := config.Init()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("failed initialize config: %v", err)
 		return
 	}
 
 	store, err := storage.NewStore(&cfg.Store)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("failed initialize storage: %v", err)
 		return
 	}
 	short := shortner.New(store)
