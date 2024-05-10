@@ -15,7 +15,7 @@ func (s *Server) mainHandle(c *gin.Context) {
 
 	b, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		log.Printf("can`t read body from request, error: %s", err)
+		log.Printf("can`t read body from request, error: %v", err)
 		c.Writer.WriteHeader(http.StatusInternalServerError)
 		return
 	}
