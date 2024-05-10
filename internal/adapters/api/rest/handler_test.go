@@ -24,6 +24,7 @@ var (
 )
 
 func initConfig(t *testing.T) {
+	t.Helper()
 	if cfg != nil {
 		return
 	}
