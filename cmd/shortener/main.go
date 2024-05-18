@@ -7,6 +7,7 @@ import (
 
 	"github.com/playmixer/short-link/internal/adapters/api/rest"
 	"github.com/playmixer/short-link/internal/adapters/config"
+	"github.com/playmixer/short-link/internal/adapters/logger"
 	"github.com/playmixer/short-link/internal/adapters/storage"
 	"github.com/playmixer/short-link/internal/core/shortner"
 )
@@ -15,6 +16,11 @@ func main() {
 	cfg, err := config.Init()
 	if err != nil {
 		log.Fatalf("failed initialize config: %v", err)
+		return
+	}
+
+	if err := logger.Init(cfg.LogLevel); err != nil {
+		log.Fatalf("failed initialize logger: %v", err)
 		return
 	}
 

@@ -50,7 +50,9 @@ func Addr(addr string) func(s *Server) {
 }
 
 func (s *Server) SetupRouter() *gin.Engine {
-	r := gin.Default()
+	r := gin.New()
+
+	r.Use(s.Logger())
 
 	r.POST("/", s.mainHandle)
 	r.GET("/:id", s.shortHandle)

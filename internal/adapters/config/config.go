@@ -19,6 +19,7 @@ type Config struct {
 	Store    storage.Config
 	Shortner shortner.Config
 	BaseURL  string `env:"BASE_URL"`
+	LogLevel string `env:"LOG_LEVEL"`
 }
 
 func Init() (*Config, error) {
@@ -29,6 +30,7 @@ func Init() (*Config, error) {
 
 	flag.StringVar(&cfg.API.Rest.Addr, "a", "localhost:8080", "address listen")
 	flag.StringVar(&cfg.BaseURL, "b", "http://localhost:8080", "base url")
+	flag.StringVar(&cfg.LogLevel, "l", "info", "logger level")
 	flag.Parse()
 
 	_ = godotenv.Load(".env")
