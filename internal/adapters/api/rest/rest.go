@@ -54,8 +54,9 @@ func (s *Server) SetupRouter() *gin.Engine {
 
 	r.Use(s.Logger())
 
-	r.POST("/", s.mainHandle)
-	r.GET("/:id", s.shortHandle)
+	r.POST("/", s.handlerMain)
+	r.GET("/:id", s.handlerShort)
+	r.POST("/api/shorten", s.handlerAPIShorten)
 
 	return r
 }
