@@ -28,11 +28,6 @@ func (s *Server) Logger() gin.HandlerFunc {
 
 func (s *Server) Gzip() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		cntnt := c.Request.Header.Get("Content-Type")
-		if !strings.Contains(cntnt, "application/json") && !strings.Contains(cntnt, "text/html") {
-			c.Next()
-			return
-		}
 
 		if ok := strings.Contains(c.Request.Header.Get("Content-Encoding"), "gzip"); ok {
 			gr, err := NewGzipReader(c.Request.Body)
@@ -47,6 +42,12 @@ func (s *Server) Gzip() gin.HandlerFunc {
 			}
 			c.Request.Body = gr
 			defer func() { _ = gr.Close() }()
+		}
+
+		cntnt := c.Request.Header.Get("Content-Type")
+		if !strings.Contains(cntnt, "application/json") && !strings.Contains(cntnt, "text/html") {
+			c.Next()
+			return
 		}
 
 		if ok := strings.Contains(c.Request.Header.Get("Accept-Encoding"), "gzip"); ok {
