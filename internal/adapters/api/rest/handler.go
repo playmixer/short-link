@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -22,13 +23,14 @@ func (s *Server) handlerMain(c *gin.Context) {
 	}
 	defer func() { _ = c.Request.Body.Close() }()
 
-	_, err = url.ParseRequestURI(string(b))
+	link := strings.TrimSpace(string(b))
+	_, err = url.ParseRequestURI(link)
 	if err != nil {
 		c.Writer.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	sLink, err := s.short.Shorty(string(b))
+	sLink, err := s.short.Shorty(link)
 	if err != nil {
 		log.Printf("can`t shorted URI `%s`, error: %v", b, err)
 		c.Writer.WriteHeader(http.StatusInternalServerError)
