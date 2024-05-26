@@ -28,7 +28,6 @@ func (s *Server) Logger() gin.HandlerFunc {
 
 func (s *Server) Gzip() gin.HandlerFunc {
 	return func(c *gin.Context) {
-
 		if ok := strings.Contains(c.Request.Header.Get("Content-Encoding"), "gzip"); ok {
 			gr, err := NewGzipReader(c.Request.Body)
 			if err != nil {
