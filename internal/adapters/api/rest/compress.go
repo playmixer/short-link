@@ -3,6 +3,7 @@ package rest
 import (
 	"bytes"
 	"compress/gzip"
+	"errors"
 	"fmt"
 	"io"
 
@@ -34,7 +35,7 @@ func NewGzipReader(r io.ReadCloser) (*GzipReader, error) {
 
 func (gr GzipReader) Read(p []byte) (n int, err error) {
 	n, err = gr.gz.Read(p)
-	if err != nil {
+	if err != nil && !errors.Is(err, io.EOF) {
 		return n, fmt.Errorf("failed reading []byte %w", err)
 	}
 	return
