@@ -12,7 +12,7 @@ import (
 )
 
 func (s *Server) handlerMain(c *gin.Context) {
-	c.Writer.Header().Add("Content-Type", "text/plain")
+	c.Writer.Header().Add(ContentType, "text/plain")
 
 	b, err := io.ReadAll(c.Request.Body)
 	if err != nil {
@@ -39,7 +39,7 @@ func (s *Server) handlerMain(c *gin.Context) {
 }
 
 func (s *Server) handlerShort(c *gin.Context) {
-	c.Writer.Header().Add("Content-Type", "text/plain")
+	c.Writer.Header().Add(ContentType, "text/plain")
 
 	id := c.Param("id")
 	if id == "" {
@@ -58,7 +58,7 @@ func (s *Server) handlerShort(c *gin.Context) {
 }
 
 func (s *Server) handlerAPIShorten(c *gin.Context) {
-	c.Writer.Header().Add("Content-Type", "application/json")
+	c.Writer.Header().Add(ContentType, "application/json")
 
 	b, err := io.ReadAll(c.Request.Body)
 	if err != nil {

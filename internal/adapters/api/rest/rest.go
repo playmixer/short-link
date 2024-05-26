@@ -6,6 +6,11 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const (
+	ContentLength string = "Content-Length"
+	ContentType   string = "Content-Type"
+)
+
 type Store interface {
 	Set(key, value string)
 	Get(key string) (string, error)
@@ -51,9 +56,10 @@ func Addr(addr string) func(s *Server) {
 
 func (s *Server) SetupRouter() *gin.Engine {
 	r := gin.New()
-
-	r.Use(s.Logger())
-
+	r.Use(
+		s.Logger(),
+		s.Gzip(),
+	)
 	r.POST("/", s.handlerMain)
 	r.GET("/:id", s.handlerShort)
 	r.POST("/api/shorten", s.handlerAPIShorten)
