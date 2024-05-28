@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/playmixer/short-link/internal/adapters/logger"
 	"go.uber.org/zap"
 )
 
@@ -15,7 +14,7 @@ func (s *Server) Logger() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
 		c.Next()
-		logger.Log.Info(
+		s.log.Info(
 			"Request information",
 			zap.String("uri", c.Request.RequestURI),
 			zap.Duration("duration", time.Since(start)),
@@ -31,7 +30,7 @@ func (s *Server) Gzip() gin.HandlerFunc {
 		if ok := strings.Contains(c.Request.Header.Get("Content-Encoding"), "gzip"); ok {
 			gr, err := NewGzipReader(c.Request.Body)
 			if err != nil {
-				logger.Log.Warn(
+				s.log.Warn(
 					"GZip read error",
 					zap.Error(err),
 				)

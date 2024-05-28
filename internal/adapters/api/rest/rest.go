@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 const (
@@ -25,6 +26,7 @@ type Server struct {
 	addr    string
 	short   Shortner
 	baseURL string
+	log     *zap.Logger
 }
 
 type Option func(s *Server)
@@ -33,6 +35,7 @@ func New(short Shortner, options ...Option) *Server {
 	srv := &Server{
 		addr:  "localhost:8080",
 		short: short,
+		log:   zap.NewNop(),
 	}
 
 	for _, opt := range options {
@@ -51,6 +54,12 @@ func BaseURL(url string) func(*Server) {
 func Addr(addr string) func(s *Server) {
 	return func(s *Server) {
 		s.addr = addr
+	}
+}
+
+func Logger(log *zap.Logger) func(s *Server) {
+	return func(s *Server) {
+		s.log = log
 	}
 }
 

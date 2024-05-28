@@ -1,7 +1,6 @@
 package shortner
 
 import (
-	"errors"
 	"fmt"
 	"net/url"
 
@@ -37,14 +36,15 @@ func New(s Store, options ...Option) *Shortner {
 }
 
 func (s *Shortner) Shorty(link string) (string, error) {
-	if _, err := url.Parse(link); err != nil {
+	var err error
+	if _, err = url.Parse(link); err != nil {
 		return "", fmt.Errorf("error parsing link: %w", err)
 	}
 
 	var i int
 	for {
 		sLink := util.RandomString(LengthShortLink)
-		if err := s.store.Set(sLink, link); err == nil {
+		if err = s.store.Set(sLink, link); err == nil {
 			return sLink, nil
 		}
 		i++
@@ -53,7 +53,7 @@ func (s *Shortner) Shorty(link string) (string, error) {
 		}
 	}
 
-	return "", errors.New("failed to generate a unique short link")
+	return "", fmt.Errorf("failed to generate a unique short link: %w", err)
 }
 
 func (s *Shortner) GetURL(short string) (string, error) {

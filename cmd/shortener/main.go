@@ -19,7 +19,8 @@ func main() {
 		return
 	}
 
-	if err := logger.Init(cfg.LogLevel); err != nil {
+	logger, err := logger.New(cfg.LogLevel)
+	if err != nil {
 		log.Fatalf("failed initialize logger: %v", err)
 		return
 	}
@@ -35,6 +36,7 @@ func main() {
 		short,
 		rest.Addr(cfg.API.Rest.Addr),
 		rest.BaseURL(cfg.BaseURL),
+		rest.Logger(logger),
 	)
 	if err := srv.Run(); !errors.Is(err, http.ErrServerClosed) {
 		log.Fatal(err)

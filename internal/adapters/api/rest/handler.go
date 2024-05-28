@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 func (s *Server) handlerMain(c *gin.Context) {
@@ -17,7 +18,7 @@ func (s *Server) handlerMain(c *gin.Context) {
 
 	b, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		log.Printf("can`t read body from request, error: %v", err)
+		s.log.Error("can`t read body from request", zap.Error(err))
 		c.Writer.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -32,7 +33,7 @@ func (s *Server) handlerMain(c *gin.Context) {
 
 	sLink, err := s.short.Shorty(link)
 	if err != nil {
-		log.Printf("can`t shorted URI `%s`, error: %v", b, err)
+		s.log.Error(fmt.Sprintf("can`t shorted URI `%s`", b), zap.Error(err))
 		c.Writer.WriteHeader(http.StatusInternalServerError)
 		return
 	}
