@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -22,7 +21,12 @@ func (s *Server) handlerMain(c *gin.Context) {
 		c.Writer.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	defer func() { _ = c.Request.Body.Close() }()
+	defer func() {
+		err := c.Request.Body.Close()
+		if err != nil {
+			s.log.Error("failed close body request", zap.Error(err))
+		}
+	}()
 
 	link := strings.TrimSpace(string(b))
 	_, err = url.ParseRequestURI(link)
@@ -61,11 +65,9 @@ func (s *Server) handlerShort(c *gin.Context) {
 }
 
 func (s *Server) handlerAPIShorten(c *gin.Context) {
-	c.Writer.Header().Add(ContentType, "application/json")
-
 	b, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		log.Printf("can`t read body from request, error: %v", err)
+		s.log.Error("can`t read body from request", zap.Error(err))
 		c.Writer.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -77,7 +79,6 @@ func (s *Server) handlerAPIShorten(c *gin.Context) {
 
 	err = json.Unmarshal(b, &req)
 	if err != nil {
-		log.Printf("can`t unmarshal body from request, error: %v", err)
 		c.Writer.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -90,11 +91,12 @@ func (s *Server) handlerAPIShorten(c *gin.Context) {
 
 	sLink, err := s.short.Shorty(req.URL)
 	if err != nil {
-		log.Printf("can`t shorted URI `%s`, error: %v", b, err)
+		s.log.Error(fmt.Sprintf("can`t shorted URI `%s`", b), zap.Error(err))
 		c.Writer.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
+	c.Writer.Header().Add(ContentType, "application/json")
 	c.JSON(http.StatusCreated, gin.H{
 		"result": fmt.Sprintf("%s/%s", s.baseURL, sLink),
 	})

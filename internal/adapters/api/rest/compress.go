@@ -42,9 +42,6 @@ func (gr GzipReader) Read(p []byte) (n int, err error) {
 }
 
 func (gr *GzipReader) Close() (err error) {
-	if err := gr.r.Close(); err != nil {
-		return fmt.Errorf("failed closing reader %w", err)
-	}
 	err = gr.gz.Close()
 	if err != nil {
 		return fmt.Errorf("failed closing gzip reader %w", err)
@@ -65,7 +62,6 @@ func NewGzipWriter(c *gin.Context) *gzipWriter {
 }
 
 func (gw *gzipWriter) Write(p []byte) (n int, err error) {
-	gw.Header().Del(ContentLength)
 	n, err = gw.writer.Write(p)
 	if err != nil {
 		return n, fmt.Errorf("failed write gzip: %w", err)
@@ -74,7 +70,6 @@ func (gw *gzipWriter) Write(p []byte) (n int, err error) {
 }
 
 func (gw *gzipWriter) WriteString(s string) (n int, err error) {
-	gw.Header().Del(ContentLength)
 	n, err = gw.writer.Write([]byte(s))
 	if err != nil {
 		return n, fmt.Errorf("failed write gzip from string: %w", err)

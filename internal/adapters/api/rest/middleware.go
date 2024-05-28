@@ -2,7 +2,6 @@ package rest
 
 import (
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
@@ -25,29 +24,28 @@ func (s *Server) Logger() gin.HandlerFunc {
 	}
 }
 
-func (s *Server) Gzip() gin.HandlerFunc {
+func (s *Server) GzipDecompress() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if ok := strings.Contains(c.Request.Header.Get("Content-Encoding"), "gzip"); ok {
 			gr, err := NewGzipReader(c.Request.Body)
 			if err != nil {
-				s.log.Warn(
-					"GZip read error",
-					zap.Error(err),
-				)
 				c.Writer.WriteHeader(http.StatusBadRequest)
 				c.Abort()
 				return
 			}
 			c.Request.Body = gr
-			defer func() { _ = gr.Close() }()
+			defer func() {
+				if err := gr.Close(); err != nil {
+					s.log.Info("failed close gzip reader", zap.Error(err))
+				}
+			}()
 		}
+		c.Next()
+	}
+}
 
-		cntnt := c.Request.Header.Get("Content-Type")
-		if !strings.Contains(cntnt, "application/json") && !strings.Contains(cntnt, "text/html") {
-			c.Next()
-			return
-		}
-
+func (s *Server) GzipCompress() gin.HandlerFunc {
+	return func(c *gin.Context) {
 		if ok := strings.Contains(c.Request.Header.Get("Accept-Encoding"), "gzip"); ok {
 			c.Writer.Header().Set("Content-Encoding", "gzip")
 
@@ -55,8 +53,9 @@ func (s *Server) Gzip() gin.HandlerFunc {
 			c.Writer = cw
 
 			defer func() {
-				_ = cw.writer.Close()
-				c.Header("Content-Length", strconv.Itoa(c.Writer.Size()))
+				if err := cw.writer.Close(); err != nil {
+					s.log.Info("failed close gzip writer", zap.Error(err))
+				}
 			}()
 		}
 		c.Next()

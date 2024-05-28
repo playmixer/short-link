@@ -67,11 +67,16 @@ func (s *Server) SetupRouter() *gin.Engine {
 	r := gin.New()
 	r.Use(
 		s.Logger(),
-		s.Gzip(),
+		s.GzipDecompress(),
 	)
 	r.POST("/", s.handlerMain)
 	r.GET("/:id", s.handlerShort)
-	r.POST("/api/shorten", s.handlerAPIShorten)
+
+	api := r.Group("/api")
+	api.Use(s.GzipCompress())
+	{
+		api.POST("/shorten", s.handlerAPIShorten)
+	}
 
 	return r
 }

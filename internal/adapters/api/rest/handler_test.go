@@ -203,7 +203,7 @@ func Test_apiShorten(t *testing.T) {
 				StatusCode:  http.StatusBadRequest,
 				Response:    "",
 				Request:     tRequest{URL: ""},
-				ContentType: "application/json",
+				ContentType: "",
 			},
 		},
 		{
@@ -217,7 +217,7 @@ func Test_apiShorten(t *testing.T) {
 				StatusCode:  http.StatusBadRequest,
 				Response:    "",
 				Request:     tRequest{URL: "test?id=qweq"},
-				ContentType: "application/json",
+				ContentType: "",
 			},
 		},
 		{
@@ -258,7 +258,8 @@ func Test_apiShorten(t *testing.T) {
 
 			result := w.Result()
 			assert.Equal(t, tt.want.StatusCode, result.StatusCode)
-			assert.Equal(t, tt.want.ContentType, result.Header.Get("Content-type"))
+			cntnt := result.Header.Get("Content-type")
+			assert.Equal(t, tt.want.ContentType, cntnt)
 			b, err := io.ReadAll(result.Body)
 			require.NoError(t, err)
 			err = result.Body.Close()
