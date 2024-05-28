@@ -80,7 +80,7 @@ func New(cfg *Config) (*Store, error) {
 
 func (s *Store) Set(key, value string) error {
 	if s.filepath != "" {
-		f, err := os.OpenFile(s.filepath, os.O_CREATE|os.O_APPEND, os.ModeAppend)
+		f, err := os.OpenFile(s.filepath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, os.ModePerm)
 		if err != nil {
 			return fmt.Errorf("failed open file: %w", err)
 		}

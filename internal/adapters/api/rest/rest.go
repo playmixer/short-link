@@ -23,10 +23,10 @@ type Shortner interface {
 }
 
 type Server struct {
+	log     *zap.Logger
 	addr    string
 	short   Shortner
 	baseURL string
-	log     *zap.Logger
 }
 
 type Option func(s *Server)
