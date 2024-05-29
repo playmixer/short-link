@@ -42,10 +42,13 @@ func (gr GzipReader) Read(p []byte) (n int, err error) {
 }
 
 func (gr *GzipReader) Close() (err error) {
-	err = gr.gz.Close()
+	err1 := gr.gz.Close()
+	err2 := gr.r.Close()
+	err = errors.Join(err1, err2)
 	if err != nil {
-		return fmt.Errorf("failed closing gzip reader %w", err)
+		return fmt.Errorf("failed close reader %w", err)
 	}
+
 	return
 }
 
