@@ -1,6 +1,9 @@
 package rest_test
 
 import (
+	"bytes"
+	"compress/gzip"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -170,6 +173,194 @@ func Test_shortHandle(t *testing.T) {
 			assert.Equal(t, tt.want.StatusCode, result.StatusCode)
 			assert.Equal(t, tt.want.ContentType, result.Header.Get("Content-type"))
 			_ = result.Body.Close()
+		})
+	}
+}
+
+func Test_apiShorten(t *testing.T) {
+	initConfig(t)
+	fmt.Println("a=", cfg.API.Rest.Addr)
+	type tRequest struct {
+		URL string `json:"url"`
+	}
+	tests := []struct {
+		name string
+		want struct {
+			StatusCode  int
+			Response    string
+			Request     tRequest
+			ContentType string
+		}
+	}{
+		{
+			name: "empty body",
+			want: struct {
+				StatusCode  int
+				Response    string
+				Request     tRequest
+				ContentType string
+			}{
+				StatusCode:  http.StatusBadRequest,
+				Response:    "",
+				Request:     tRequest{URL: ""},
+				ContentType: "",
+			},
+		},
+		{
+			name: "no valid link",
+			want: struct {
+				StatusCode  int
+				Response    string
+				Request     tRequest
+				ContentType string
+			}{
+				StatusCode:  http.StatusBadRequest,
+				Response:    "",
+				Request:     tRequest{URL: "test?id=qweq"},
+				ContentType: "",
+			},
+		},
+		{
+			name: "valid link",
+			want: struct {
+				StatusCode  int
+				Response    string
+				Request     tRequest
+				ContentType string
+			}{
+				StatusCode:  http.StatusCreated,
+				Response:    "",
+				Request:     tRequest{URL: "https://practicum.yandex.ru/"},
+				ContentType: "application/json",
+			},
+		},
+	}
+
+	store, err := storage.NewStore(&storage.Config{Memory: &memory.Config{}})
+	if err != nil {
+		t.Errorf("failed initialize storage: %v", err)
+		return
+	}
+	s := shortner.New(store)
+	srv := rest.New(s, rest.Addr(cfg.API.Rest.Addr), rest.BaseURL(cfg.BaseURL))
+	router := srv.SetupRouter()
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			reqBody, err := json.Marshal(tt.want.Request)
+			if err != nil {
+				require.NoError(t, err)
+			}
+			body := strings.NewReader(string(reqBody))
+			r := httptest.NewRequest(http.MethodPost, "/api/shorten", body)
+			router.ServeHTTP(w, r)
+
+			result := w.Result()
+			assert.Equal(t, tt.want.StatusCode, result.StatusCode)
+			cntnt := result.Header.Get("Content-type")
+			assert.Equal(t, tt.want.ContentType, cntnt)
+			b, err := io.ReadAll(result.Body)
+			require.NoError(t, err)
+			err = result.Body.Close()
+			require.NoError(t, err)
+			if result.StatusCode != tt.want.StatusCode {
+				t.Fail()
+			}
+			if result.StatusCode == http.StatusCreated && err != nil {
+				var res struct {
+					Result string `json:"result"`
+				}
+				err = json.Unmarshal(b, &res)
+				require.NoError(t, err)
+				if _, err = url.ParseRequestURI(res.Result); err != nil {
+					t.Fail()
+				}
+			}
+		})
+	}
+}
+
+func Test_Gzip(t *testing.T) {
+	initConfig(t)
+	fmt.Println("a=", cfg.API.Rest.Addr)
+	tests := []struct {
+		name string
+		want struct {
+			StatusCode  int
+			Request     []byte
+			ContentType string
+		}
+	}{
+		{
+			name: "zip1",
+			want: struct {
+				StatusCode  int
+				Request     []byte
+				ContentType string
+			}{
+				StatusCode:  http.StatusCreated,
+				Request:     []byte(`{"url": "https://practicum.yandex.ru/"}`),
+				ContentType: "application/json",
+			},
+		},
+	}
+
+	store, err := storage.NewStore(&storage.Config{Memory: &memory.Config{}})
+	if err != nil {
+		t.Errorf("failed initialize storage: %v", err)
+		return
+	}
+	s := shortner.New(store)
+	srv := rest.New(s, rest.Addr(cfg.API.Rest.Addr), rest.BaseURL(cfg.BaseURL))
+	router := srv.SetupRouter()
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			var buf bytes.Buffer
+
+			gz := gzip.NewWriter(&buf)
+			_, err = gz.Write(tt.want.Request)
+			if err != nil {
+				t.Fatal(err)
+			}
+			_ = gz.Close()
+			r := httptest.NewRequest(http.MethodPost, "/api/shorten", &buf)
+			r.Header.Add("Content-Type", "application/json")
+			r.Header.Add("Content-Encoding", "gzip")
+			r.Header.Add("Accept-Encoding", "gzip")
+			router.ServeHTTP(w, r)
+
+			result := w.Result()
+			assert.Equal(t, tt.want.StatusCode, result.StatusCode)
+			assert.Equal(t, tt.want.ContentType, result.Header.Get("Content-Type"))
+
+			if result.StatusCode != tt.want.StatusCode {
+				t.Fail()
+			}
+			if result.StatusCode == http.StatusCreated && err == nil {
+				gr, err := gzip.NewReader(result.Body)
+				require.NoError(t, err)
+				defer func() { _ = gr.Close() }()
+				err = result.Body.Close()
+				require.NoError(t, err)
+				b, err := io.ReadAll(gr)
+				require.NoError(t, err)
+
+				var res struct {
+					Result string `json:"result"`
+				}
+
+				err = json.Unmarshal(b, &res)
+				if err != nil {
+					t.Fatal(gr.Extra)
+				}
+				require.NoError(t, err)
+				if _, err = url.ParseRequestURI(res.Result); err != nil {
+					t.Fail()
+				}
+			}
 		})
 	}
 }

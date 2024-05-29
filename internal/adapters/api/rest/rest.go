@@ -4,6 +4,12 @@ import (
 	"fmt"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
+)
+
+const (
+	ContentLength string = "Content-Length"
+	ContentType   string = "Content-Type"
 )
 
 type Store interface {
@@ -17,6 +23,7 @@ type Shortner interface {
 }
 
 type Server struct {
+	log     *zap.Logger
 	addr    string
 	short   Shortner
 	baseURL string
@@ -28,6 +35,7 @@ func New(short Shortner, options ...Option) *Server {
 	srv := &Server{
 		addr:  "localhost:8080",
 		short: short,
+		log:   zap.NewNop(),
 	}
 
 	for _, opt := range options {
@@ -49,11 +57,26 @@ func Addr(addr string) func(s *Server) {
 	}
 }
 
-func (s *Server) SetupRouter() *gin.Engine {
-	r := gin.Default()
+func Logger(log *zap.Logger) func(s *Server) {
+	return func(s *Server) {
+		s.log = log
+	}
+}
 
-	r.POST("/", s.mainHandle)
-	r.GET("/:id", s.shortHandle)
+func (s *Server) SetupRouter() *gin.Engine {
+	r := gin.New()
+	r.Use(
+		s.Logger(),
+		s.GzipDecompress(),
+	)
+	r.POST("/", s.handlerMain)
+	r.GET("/:id", s.handlerShort)
+
+	api := r.Group("/api")
+	api.Use(s.GzipCompress())
+	{
+		api.POST("/shorten", s.handlerAPIShorten)
+	}
 
 	return r
 }

@@ -15,11 +15,11 @@ type Store struct {
 	mu   *sync.Mutex
 }
 
-func New(cfg *Config) *Store {
+func New(cfg *Config) (*Store, error) {
 	return &Store{
 		data: make(map[string]string),
 		mu:   &sync.Mutex{},
-	}
+	}, nil
 }
 
 func (s *Store) Set(key, value string) error {

@@ -25,3 +25,5 @@ vendor/
 go-lint.bat
 .env
 golangci-lint
+
+tmp
