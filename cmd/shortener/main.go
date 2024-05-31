@@ -7,6 +7,7 @@ import (
 
 	"github.com/playmixer/short-link/internal/adapters/api/rest"
 	"github.com/playmixer/short-link/internal/adapters/config"
+	"github.com/playmixer/short-link/internal/adapters/database"
 	"github.com/playmixer/short-link/internal/adapters/logger"
 	"github.com/playmixer/short-link/internal/adapters/storage"
 	"github.com/playmixer/short-link/internal/core/shortner"
@@ -31,6 +32,8 @@ func main() {
 		return
 	}
 	short := shortner.New(store)
+
+	database.Init(cfg.Store.Database.DSN)
 
 	srv := rest.New(
 		short,

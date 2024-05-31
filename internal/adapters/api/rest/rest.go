@@ -71,6 +71,7 @@ func (s *Server) SetupRouter() *gin.Engine {
 	)
 	r.POST("/", s.handlerMain)
 	r.GET("/:id", s.handlerShort)
+	r.GET("/ping", s.handlerPing)
 
 	api := r.Group("/api")
 	api.Use(s.GzipCompress())

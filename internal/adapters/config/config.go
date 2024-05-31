@@ -10,8 +10,13 @@ import (
 	"github.com/playmixer/short-link/internal/adapters/api"
 	"github.com/playmixer/short-link/internal/adapters/api/rest"
 	"github.com/playmixer/short-link/internal/adapters/storage"
+	"github.com/playmixer/short-link/internal/adapters/storage/database"
 	"github.com/playmixer/short-link/internal/adapters/storage/file"
 	"github.com/playmixer/short-link/internal/core/shortner"
+)
+
+var (
+	Cfg *Config
 )
 
 type Config struct {
@@ -25,13 +30,18 @@ type Config struct {
 func Init() (*Config, error) {
 	cfg := Config{
 		API:   api.Config{Rest: &rest.Config{}},
-		Store: storage.Config{File: &file.Config{}},
+		Store: storage.Config{File: &file.Config{}, Database: &database.Config{}},
 	}
 
 	flag.StringVar(&cfg.API.Rest.Addr, "a", "localhost:8080", "address listen")
 	flag.StringVar(&cfg.BaseURL, "b", "http://localhost:8080", "base url")
 	flag.StringVar(&cfg.LogLevel, "l", "info", "logger level")
-	flag.StringVar(&cfg.Store.File.StoragePath, "f", "/tmp/short-url-db.json", "storage file")
+	if cfg.Store.File != nil {
+		flag.StringVar(&cfg.Store.File.StoragePath, "f", "/tmp/short-url-db.json", "storage file")
+	}
+	if cfg.Store.Database != nil {
+		flag.StringVar(&cfg.Store.Database.DSN, "d", "postgres://root:root@localhost:5432/shortner", "database dsn")
+	}
 	flag.Parse()
 
 	_ = godotenv.Load(".env")
@@ -39,6 +49,8 @@ func Init() (*Config, error) {
 	if err := env.Parse(&cfg); err != nil {
 		return nil, fmt.Errorf("error parse config %w", err)
 	}
+
+	Cfg = &cfg
 
 	return &cfg, nil
 }

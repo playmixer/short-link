@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/playmixer/short-link/internal/adapters/database"
 	"go.uber.org/zap"
 )
 
@@ -100,4 +101,22 @@ func (s *Server) handlerAPIShorten(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{
 		"result": fmt.Sprintf("%s/%s", s.baseURL, sLink),
 	})
+}
+
+func (s *Server) handlerPing(c *gin.Context) {
+	conn, err := database.Conn()
+	if err != nil {
+		s.log.Info("failed create connect to database", zap.Error(err))
+		c.Writer.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	err = conn.Ping()
+	if err != nil {
+		s.log.Info("failed ping database", zap.Error(err))
+		c.Writer.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	c.Writer.WriteHeader(http.StatusOK)
 }

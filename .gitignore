@@ -27,3 +27,4 @@ go-lint.bat
 golangci-lint
 
 tmp
+scripts
