@@ -1,6 +1,7 @@
 package shortner
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 
@@ -13,8 +14,8 @@ var (
 )
 
 type Store interface {
-	Get(short string) (string, error)
-	Set(short string, url string) error
+	Get(ctx context.Context, short string) (string, error)
+	Set(ctx context.Context, short string, url string) error
 }
 
 type Shortner struct {
@@ -35,7 +36,7 @@ func New(s Store, options ...Option) *Shortner {
 	return sh
 }
 
-func (s *Shortner) Shorty(link string) (string, error) {
+func (s *Shortner) Shorty(ctx context.Context, link string) (string, error) {
 	var err error
 	if _, err = url.Parse(link); err != nil {
 		return "", fmt.Errorf("error parsing link: %w", err)
@@ -44,7 +45,7 @@ func (s *Shortner) Shorty(link string) (string, error) {
 	var i int
 	for {
 		sLink := util.RandomString(LengthShortLink)
-		if err = s.store.Set(sLink, link); err == nil {
+		if err = s.store.Set(ctx, sLink, link); err == nil {
 			return sLink, nil
 		}
 		i++
@@ -56,8 +57,8 @@ func (s *Shortner) Shorty(link string) (string, error) {
 	return "", fmt.Errorf("failed to generate a unique short link: %w", err)
 }
 
-func (s *Shortner) GetURL(short string) (string, error) {
-	link, err := s.store.Get(short)
+func (s *Shortner) GetURL(ctx context.Context, short string) (string, error) {
+	link, err := s.store.Get(ctx, short)
 	if err != nil {
 		return "", fmt.Errorf("error getting link: %w", err)
 	}

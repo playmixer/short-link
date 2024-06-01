@@ -1,6 +1,7 @@
 package memory
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sync"
@@ -22,7 +23,7 @@ func New(cfg *Config) (*Store, error) {
 	}, nil
 }
 
-func (s *Store) Set(key, value string) error {
+func (s *Store) Set(ctx context.Context, key, value string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if _, ok := s.data[key]; ok {
@@ -32,7 +33,7 @@ func (s *Store) Set(key, value string) error {
 	return nil
 }
 
-func (s *Store) Get(key string) (string, error) {
+func (s *Store) Get(ctx context.Context, key string) (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if _, ok := s.data[key]; ok {

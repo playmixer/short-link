@@ -2,6 +2,7 @@ package file
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -64,7 +65,7 @@ func New(cfg *Config) (*Store, error) {
 			if err != nil {
 				return nil, fmt.Errorf("failed unmarshal data from storage: %w", err)
 			}
-			err = s.Store.Set(item.ShortURL, item.OriginalURL)
+			err = s.Store.Set(context.Background(), item.ShortURL, item.OriginalURL)
 			if err != nil {
 				return nil, fmt.Errorf("failed set: %w", err)
 			}
@@ -78,7 +79,7 @@ func New(cfg *Config) (*Store, error) {
 	return s, nil
 }
 
-func (s *Store) Set(key, value string) error {
+func (s *Store) Set(ctx context.Context, key, value string) error {
 	if s.filepath != "" {
 		f, err := os.OpenFile(s.filepath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, os.ModePerm)
 		if err != nil {
@@ -99,7 +100,7 @@ func (s *Store) Set(key, value string) error {
 		}
 	}
 
-	err := s.Store.Set(key, value)
+	err := s.Store.Set(ctx, key, value)
 	if err != nil {
 		return fmt.Errorf("failed setted data: %w", err)
 	}

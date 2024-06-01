@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -14,6 +15,9 @@ import (
 )
 
 func (s *Server) handlerMain(c *gin.Context) {
+	ctx, cancel := context.WithCancel(c.Request.Context())
+	defer cancel()
+
 	c.Writer.Header().Add(ContentType, "text/plain")
 
 	b, err := io.ReadAll(c.Request.Body)
@@ -36,7 +40,7 @@ func (s *Server) handlerMain(c *gin.Context) {
 		return
 	}
 
-	sLink, err := s.short.Shorty(link)
+	sLink, err := s.short.Shorty(ctx, link)
 	if err != nil {
 		s.log.Error(fmt.Sprintf("can`t shorted URI `%s`", b), zap.Error(err))
 		c.Writer.WriteHeader(http.StatusInternalServerError)
@@ -47,6 +51,9 @@ func (s *Server) handlerMain(c *gin.Context) {
 }
 
 func (s *Server) handlerShort(c *gin.Context) {
+	ctx, cancel := context.WithCancel(c.Request.Context())
+	defer cancel()
+
 	c.Writer.Header().Add(ContentType, "text/plain")
 
 	id := c.Param("id")
@@ -55,7 +62,7 @@ func (s *Server) handlerShort(c *gin.Context) {
 		return
 	}
 
-	link, err := s.short.GetURL(id)
+	link, err := s.short.GetURL(ctx, id)
 	if err != nil {
 		c.Writer.WriteHeader(http.StatusBadRequest)
 		return
@@ -66,6 +73,7 @@ func (s *Server) handlerShort(c *gin.Context) {
 }
 
 func (s *Server) handlerAPIShorten(c *gin.Context) {
+	ctx := context.Background()
 	b, err := io.ReadAll(c.Request.Body)
 	if err != nil {
 		s.log.Error("can`t read body from request", zap.Error(err))
@@ -90,7 +98,7 @@ func (s *Server) handlerAPIShorten(c *gin.Context) {
 		return
 	}
 
-	sLink, err := s.short.Shorty(req.URL)
+	sLink, err := s.short.Shorty(ctx, req.URL)
 	if err != nil {
 		s.log.Error(fmt.Sprintf("can`t shorted URI `%s`", b), zap.Error(err))
 		c.Writer.WriteHeader(http.StatusInternalServerError)

@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/gin-gonic/gin"
@@ -12,14 +13,9 @@ const (
 	ContentType   string = "Content-Type"
 )
 
-type Store interface {
-	Set(key, value string)
-	Get(key string) (string, error)
-}
-
 type Shortner interface {
-	Shorty(link string) (string, error)
-	GetURL(short string) (string, error)
+	Shorty(ctx context.Context, link string) (string, error)
+	GetURL(ctx context.Context, short string) (string, error)
 }
 
 type Server struct {
