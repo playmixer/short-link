@@ -11,6 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/playmixer/short-link/internal/adapters/database"
+	"github.com/playmixer/short-link/internal/adapters/models"
 	"go.uber.org/zap"
 )
 
@@ -127,4 +128,42 @@ func (s *Server) handlerPing(c *gin.Context) {
 	}
 
 	c.Writer.WriteHeader(http.StatusOK)
+}
+
+func (s *Server) handlerAPIShortenBatch(c *gin.Context) {
+	ctx := context.Background()
+	b, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		s.log.Error("can`t read body from request", zap.Error(err))
+		c.Writer.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	defer func() { _ = c.Request.Body.Close() }()
+
+	var req []models.ShortenBatchRequest
+	err = json.Unmarshal(b, &req)
+	if err != nil {
+		c.Writer.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	for _, v := range req {
+		_, err = url.ParseRequestURI(v.OriginalURL)
+		if err != nil {
+			c.Writer.WriteHeader(http.StatusBadRequest)
+			return
+		}
+	}
+
+	sLink, err := s.short.ShortyBatch(ctx, req)
+	if err != nil {
+		s.log.Error(fmt.Sprintf("can`t shorted URI `%s`", b), zap.Error(err))
+		c.Writer.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	for i := range sLink {
+		sLink[i].ShortURL = fmt.Sprintf("%s/%s", s.baseURL, sLink[i].ShortURL)
+	}
+
+	c.Writer.Header().Add(ContentType, "application/json")
+	c.JSON(http.StatusCreated, sLink)
 }

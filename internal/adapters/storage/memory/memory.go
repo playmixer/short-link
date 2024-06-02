@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+
+	"github.com/playmixer/short-link/internal/adapters/models"
 )
 
 var (
@@ -40,4 +42,14 @@ func (s *Store) Get(ctx context.Context, key string) (string, error) {
 		return s.data[key], nil
 	}
 	return "", ErrNotFoundKey
+}
+
+func (s *Store) SetBatch(ctx context.Context, batch []models.ShortLink) error {
+	for _, req := range batch {
+		err := s.Set(ctx, req.ShortURL, req.OriginalURL)
+		if err != nil {
+			return fmt.Errorf("set link `%s` failed: %w", req.OriginalURL, err)
+		}
+	}
+	return nil
 }

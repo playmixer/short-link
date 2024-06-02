@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/playmixer/short-link/internal/adapters/models"
 	"github.com/playmixer/short-link/internal/adapters/storage/memory"
 )
 
@@ -105,5 +106,15 @@ func (s *Store) Set(ctx context.Context, key, value string) error {
 		return fmt.Errorf("failed setted data: %w", err)
 	}
 
+	return nil
+}
+
+func (s *Store) SetBatch(ctx context.Context, batch []models.ShortLink) error {
+	for _, req := range batch {
+		err := s.Set(ctx, req.ShortURL, req.OriginalURL)
+		if err != nil {
+			return fmt.Errorf("failed setted data: %w", err)
+		}
+	}
 	return nil
 }

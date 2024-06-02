@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/gin-gonic/gin"
+	"github.com/playmixer/short-link/internal/adapters/models"
 	"go.uber.org/zap"
 )
 
@@ -15,6 +16,7 @@ const (
 
 type Shortner interface {
 	Shorty(ctx context.Context, link string) (string, error)
+	ShortyBatch(ctx context.Context, links []models.ShortenBatchRequest) ([]models.ShortenBatchResponse, error)
 	GetURL(ctx context.Context, short string) (string, error)
 }
 
@@ -73,6 +75,7 @@ func (s *Server) SetupRouter() *gin.Engine {
 	api.Use(s.GzipCompress())
 	{
 		api.POST("/shorten", s.handlerAPIShorten)
+		api.POST("/shorten/batch", s.handlerAPIShortenBatch)
 	}
 
 	return r

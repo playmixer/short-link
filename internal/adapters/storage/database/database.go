@@ -7,6 +7,7 @@ import (
 	"database/sql"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/playmixer/short-link/internal/adapters/models"
 )
 
 type Store struct {
@@ -73,4 +74,31 @@ func (s *Store) Get(ctx context.Context, key string) (string, error) {
 		return "", fmt.Errorf("query row error: %w", err)
 	}
 	return value, nil
+}
+
+func (s *Store) SetBatch(ctx context.Context, batch []models.ShortLink) error {
+	tx, err := s.conn.Begin()
+	if err != nil {
+		return fmt.Errorf("failed begin transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	stmn, err := tx.PrepareContext(ctx, "insert into short_link (short_url, original_url) values ($1, $2)")
+	if err != nil {
+		return fmt.Errorf("cannot prepare sql query: %w", err)
+	}
+	defer func() { _ = stmn.Close() }()
+	for _, query := range batch {
+		_, err := stmn.ExecContext(ctx, query.ShortURL, query.OriginalURL)
+		if err != nil {
+			return fmt.Errorf("failed insert: %w", err)
+		}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return fmt.Errorf("failed commit insert: %w", err)
+	}
+
+	return nil
 }

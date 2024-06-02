@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/playmixer/short-link/internal/adapters/models"
 	"github.com/playmixer/short-link/internal/adapters/storage/database"
 	"github.com/playmixer/short-link/internal/adapters/storage/file"
 	"github.com/playmixer/short-link/internal/adapters/storage/memory"
@@ -19,6 +20,7 @@ type Config struct {
 type Store interface {
 	Set(ctx context.Context, key, value string) error
 	Get(ctx context.Context, key string) (string, error)
+	SetBatch(ctx context.Context, batch []models.ShortLink) error
 }
 
 func NewStore(cfg *Config) (Store, error) {

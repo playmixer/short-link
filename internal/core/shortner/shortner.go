@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 
+	"github.com/playmixer/short-link/internal/adapters/models"
 	"github.com/playmixer/short-link/pkg/util"
 )
 
@@ -16,6 +17,7 @@ var (
 type Store interface {
 	Get(ctx context.Context, short string) (string, error)
 	Set(ctx context.Context, short string, url string) error
+	SetBatch(ctx context.Context, batch []models.ShortLink) error
 }
 
 type Shortner struct {
@@ -63,4 +65,28 @@ func (s *Shortner) GetURL(ctx context.Context, short string) (string, error) {
 		return "", fmt.Errorf("error getting link: %w", err)
 	}
 	return link, nil
+}
+
+func (s *Shortner) ShortyBatch(ctx context.Context, batch []models.ShortenBatchRequest) (
+	links []models.ShortenBatchResponse,
+	err error,
+) {
+	links = make([]models.ShortenBatchResponse, 0, len(batch))
+	payload := make([]models.ShortLink, 0, len(batch))
+	for _, batchRequest := range batch {
+		short := util.RandomString(LengthShortLink)
+		links = append(links, models.ShortenBatchResponse{
+			CorrelationID: batchRequest.CorrelationID,
+			ShortURL:      short,
+		})
+		payload = append(payload, models.ShortLink{
+			ShortURL:    short,
+			OriginalURL: batchRequest.OriginalURL,
+		})
+	}
+	err = s.store.SetBatch(ctx, payload)
+	if err != nil {
+		return links, fmt.Errorf("failed insert list URLs: %w", err)
+	}
+	return links, nil
 }
