@@ -7,10 +7,12 @@ import (
 	"sync"
 
 	"github.com/playmixer/short-link/internal/adapters/models"
+	"github.com/playmixer/short-link/internal/adapters/shortnererror"
 )
 
 var (
-	ErrNotFoundKey = errors.New("not found value by key")
+	ErrNotFoundKey   = errors.New("not found value by key")
+	ErrNotFoundValue = errors.New("not found value by value")
 )
 
 type Store struct {
@@ -28,6 +30,11 @@ func New(cfg *Config) (*Store, error) {
 func (s *Store) Set(ctx context.Context, key, value string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	for _, v := range s.data {
+		if v == value {
+			return shortnererror.ErrNotUnique
+		}
+	}
 	if _, ok := s.data[key]; ok {
 		return fmt.Errorf("short link `%s` is exists", key)
 	}
@@ -52,4 +59,15 @@ func (s *Store) SetBatch(ctx context.Context, batch []models.ShortLink) error {
 		}
 	}
 	return nil
+}
+
+func (s *Store) GetByOriginal(ctx context.Context, original string) (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for k, v := range s.data {
+		if v == original {
+			return k, nil
+		}
+	}
+	return "", ErrNotFoundValue
 }

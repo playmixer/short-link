@@ -94,6 +94,20 @@ func Test_mainHandle(t *testing.T) {
 				ContentType: "text/plain",
 			},
 		},
+		{
+			name: "duplicate",
+			want: struct {
+				StatusCode  int
+				Response    string
+				Request     string
+				ContentType string
+			}{
+				StatusCode:  http.StatusConflict,
+				Response:    "",
+				Request:     "https://practicum.yandex.ru/",
+				ContentType: "text/plain",
+			},
+		},
 	}
 
 	store, err := storage.NewStore(&storage.Config{Memory: &memory.Config{}})
@@ -229,6 +243,20 @@ func Test_apiShorten(t *testing.T) {
 				ContentType string
 			}{
 				StatusCode:  http.StatusCreated,
+				Response:    "",
+				Request:     tRequest{URL: "https://practicum.yandex.ru/"},
+				ContentType: "application/json",
+			},
+		},
+		{
+			name: "conflict",
+			want: struct {
+				StatusCode  int
+				Response    string
+				Request     tRequest
+				ContentType string
+			}{
+				StatusCode:  http.StatusConflict,
 				Response:    "",
 				Request:     tRequest{URL: "https://practicum.yandex.ru/"},
 				ContentType: "application/json",

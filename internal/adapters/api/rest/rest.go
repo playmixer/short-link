@@ -18,6 +18,7 @@ type Shortner interface {
 	Shorty(ctx context.Context, link string) (string, error)
 	ShortyBatch(ctx context.Context, links []models.ShortenBatchRequest) ([]models.ShortenBatchResponse, error)
 	GetURL(ctx context.Context, short string) (string, error)
+	GetShortByOriginal(ctx context.Context, original string) (string, error)
 }
 
 type Server struct {
@@ -87,4 +88,8 @@ func (s *Server) Run() error {
 		return fmt.Errorf("server has failed: %w", err)
 	}
 	return nil
+}
+
+func (s *Server) baseLink(short string) string {
+	return fmt.Sprintf("%s/%s", s.baseURL, short)
 }

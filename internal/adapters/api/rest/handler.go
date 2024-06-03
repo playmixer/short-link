@@ -3,6 +3,7 @@ package rest
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/playmixer/short-link/internal/adapters/database"
 	"github.com/playmixer/short-link/internal/adapters/models"
+	"github.com/playmixer/short-link/internal/adapters/shortnererror"
 	"go.uber.org/zap"
 )
 
@@ -42,13 +44,22 @@ func (s *Server) handlerMain(c *gin.Context) {
 	}
 
 	sLink, err := s.short.Shorty(ctx, link)
-	if err != nil {
+	if err != nil && errors.Is(err, shortnererror.ErrNotUnique) {
+		sLink, err = s.short.GetShortByOriginal(ctx, link)
+		if err != nil {
+			s.log.Error("can`t found original URI", zap.String("original_url", link))
+			c.Writer.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		c.String(http.StatusConflict, s.baseLink(sLink))
+		return
+	} else if err != nil {
 		s.log.Error(fmt.Sprintf("can`t shorted URI `%s`", b), zap.Error(err))
 		c.Writer.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	c.String(http.StatusCreated, fmt.Sprintf("%s/%s", s.baseURL, sLink))
+	c.String(http.StatusCreated, s.baseLink(sLink))
 }
 
 func (s *Server) handlerShort(c *gin.Context) {
@@ -100,7 +111,19 @@ func (s *Server) handlerAPIShorten(c *gin.Context) {
 	}
 
 	sLink, err := s.short.Shorty(ctx, req.URL)
-	if err != nil {
+	if err != nil && errors.Is(err, shortnererror.ErrNotUnique) {
+		sLink, err = s.short.GetShortByOriginal(ctx, req.URL)
+		if err != nil {
+			s.log.Error("can`t found original URI", zap.String("original_url", req.URL))
+			c.Writer.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		c.Writer.Header().Add(ContentType, "application/json")
+		c.JSON(http.StatusConflict, gin.H{
+			"result": s.baseLink(sLink),
+		})
+		return
+	} else if err != nil {
 		s.log.Error(fmt.Sprintf("can`t shorted URI `%s`", b), zap.Error(err))
 		c.Writer.WriteHeader(http.StatusInternalServerError)
 		return
@@ -108,7 +131,7 @@ func (s *Server) handlerAPIShorten(c *gin.Context) {
 
 	c.Writer.Header().Add(ContentType, "application/json")
 	c.JSON(http.StatusCreated, gin.H{
-		"result": fmt.Sprintf("%s/%s", s.baseURL, sLink),
+		"result": s.baseLink(sLink),
 	})
 }
 

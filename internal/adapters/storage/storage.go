@@ -21,6 +21,7 @@ type Store interface {
 	Set(ctx context.Context, key, value string) error
 	Get(ctx context.Context, key string) (string, error)
 	SetBatch(ctx context.Context, batch []models.ShortLink) error
+	GetByOriginal(ctx context.Context, original string) (string, error)
 }
 
 func NewStore(cfg *Config) (Store, error) {

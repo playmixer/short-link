@@ -2,12 +2,16 @@ package database
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"database/sql"
 
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/playmixer/short-link/internal/adapters/models"
+	"github.com/playmixer/short-link/internal/adapters/shortnererror"
 )
 
 type Store struct {
@@ -30,7 +34,8 @@ func initTables(db *sql.DB) error {
 		short_url varchar NOT NULL,
 		CONSTRAINT short_url_pk PRIMARY KEY (short_url)
 	);
-	CREATE INDEX IF NOT EXISTS short_url_short_url_idx ON public.short_link (short_url);`
+	CREATE UNIQUE INDEX IF NOT EXISTS short_link_original_url_idx ON public.short_link USING btree (original_url);
+	CREATE UNIQUE INDEX IF NOT EXISTS short_link_short_url_idx ON public.short_link USING btree (short_url);`
 
 	_, err := db.Exec(exec)
 	if err != nil {
@@ -57,6 +62,10 @@ func New(cfg *Config) (*Store, error) {
 
 func (s *Store) Set(ctx context.Context, key, value string) error {
 	_, err := s.conn.ExecContext(ctx, "insert into short_link (short_url, original_url) values ($1, $2)", key, value)
+	var sqlError *pgconn.PgError
+	if err != nil && errors.As(err, &sqlError) && pgerrcode.IsIntegrityConstraintViolation(sqlError.Code) {
+		return fmt.Errorf("pgerror: %w: %w", shortnererror.ErrNotUnique, err)
+	}
 	if err != nil {
 		return fmt.Errorf("failed setting short url: %w", err)
 	}
@@ -101,4 +110,17 @@ func (s *Store) SetBatch(ctx context.Context, batch []models.ShortLink) error {
 	}
 
 	return nil
+}
+
+func (s *Store) GetByOriginal(ctx context.Context, original string) (string, error) {
+	row := s.conn.QueryRowContext(ctx, "select short_url from short_link where original_url =$1", original)
+	var value string
+	err := row.Scan(&value)
+	if err != nil {
+		return "", fmt.Errorf("failed scan url %w", err)
+	}
+	if err := row.Err(); err != nil {
+		return "", fmt.Errorf("query row error: %w", err)
+	}
+	return value, nil
 }

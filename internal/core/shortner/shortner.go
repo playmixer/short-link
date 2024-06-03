@@ -18,6 +18,7 @@ type Store interface {
 	Get(ctx context.Context, short string) (string, error)
 	Set(ctx context.Context, short string, url string) error
 	SetBatch(ctx context.Context, batch []models.ShortLink) error
+	GetByOriginal(ctx context.Context, original string) (string, error)
 }
 
 type Shortner struct {
@@ -89,4 +90,12 @@ func (s *Shortner) ShortyBatch(ctx context.Context, batch []models.ShortenBatchR
 		return links, fmt.Errorf("failed insert list URLs: %w", err)
 	}
 	return links, nil
+}
+
+func (s *Shortner) GetShortByOriginal(ctx context.Context, original string) (string, error) {
+	link, err := s.store.GetByOriginal(ctx, original)
+	if err != nil {
+		return "", fmt.Errorf("error getting link: %w", err)
+	}
+	return link, nil
 }
