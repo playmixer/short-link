@@ -9,6 +9,7 @@ import (
 	"github.com/playmixer/short-link/internal/adapters/storage/database"
 	"github.com/playmixer/short-link/internal/adapters/storage/file"
 	"github.com/playmixer/short-link/internal/adapters/storage/memory"
+	"go.uber.org/zap"
 )
 
 type Config struct {
@@ -18,18 +19,21 @@ type Config struct {
 }
 
 type Store interface {
-	Set(ctx context.Context, key, value string) error
+	Set(ctx context.Context, key, value string) (string, error)
 	Get(ctx context.Context, key string) (string, error)
-	SetBatch(ctx context.Context, batch []models.ShortLink) error
+	SetBatch(ctx context.Context, batch []models.ShortLink) ([]models.ShortLink, error)
 	GetByOriginal(ctx context.Context, original string) (string, error)
+	Ping(ctx context.Context) error
 }
 
-func NewStore(cfg *Config) (Store, error) {
+func NewStore(ctx context.Context, cfg *Config, log *zap.Logger) (Store, error) {
 	if cfg.Database != nil && cfg.Database.DSN != "" {
-		store, err := database.New(cfg.Database)
+		cfg.Database.SetLogger(log)
+		store, err := database.New(ctx, cfg.Database)
 		if err != nil {
 			return nil, fmt.Errorf("failed initialize database storage: %w", err)
 		}
+		log.Info("database storage initialized")
 		return store, nil
 	}
 
@@ -38,6 +42,7 @@ func NewStore(cfg *Config) (Store, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed initialize file storage: %w", err)
 		}
+		log.Info("file storage initialized")
 		return store, nil
 	}
 
@@ -46,6 +51,7 @@ func NewStore(cfg *Config) (Store, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed initialize memory storage: %w", err)
 		}
+		log.Info("memory storage initialized")
 		return store, nil
 	}
 

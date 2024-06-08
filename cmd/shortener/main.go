@@ -1,19 +1,21 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"log"
 	"net/http"
 
 	"github.com/playmixer/short-link/internal/adapters/api/rest"
 	"github.com/playmixer/short-link/internal/adapters/config"
-	"github.com/playmixer/short-link/internal/adapters/database"
 	"github.com/playmixer/short-link/internal/adapters/logger"
 	"github.com/playmixer/short-link/internal/adapters/storage"
 	"github.com/playmixer/short-link/internal/core/shortner"
 )
 
 func main() {
+	ctx, cancel := context.WithCancel(context.Background())
+
 	cfg, err := config.Init()
 	if err != nil {
 		log.Fatalf("failed initialize config: %v", err)
@@ -26,15 +28,14 @@ func main() {
 		return
 	}
 
-	store, err := storage.NewStore(&cfg.Store)
+	store, err := storage.NewStore(ctx, &cfg.Store, lgr)
 	if err != nil {
+		cancel()
 		log.Fatalf("failed initialize storage: %v", err)
 		return
 	}
+
 	short := shortner.New(store)
-
-	database.Init(cfg.Store.Database.DSN)
-
 	srv := rest.New(
 		short,
 		rest.Addr(cfg.API.Rest.Addr),
@@ -42,6 +43,8 @@ func main() {
 		rest.Logger(lgr),
 	)
 	if err := srv.Run(); !errors.Is(err, http.ErrServerClosed) {
+		cancel()
 		log.Fatal(err)
 	}
+	cancel()
 }

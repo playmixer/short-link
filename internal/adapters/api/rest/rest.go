@@ -10,8 +10,9 @@ import (
 )
 
 const (
-	ContentLength string = "Content-Length"
-	ContentType   string = "Content-Type"
+	ContentLength   string = "Content-Length"
+	ContentType     string = "Content-Type"
+	ApplicationJSON string = "application/json"
 )
 
 type Shortner interface {
@@ -19,6 +20,7 @@ type Shortner interface {
 	ShortyBatch(ctx context.Context, links []models.ShortenBatchRequest) ([]models.ShortenBatchResponse, error)
 	GetURL(ctx context.Context, short string) (string, error)
 	GetShortByOriginal(ctx context.Context, original string) (string, error)
+	PingStore(ctx context.Context) error
 }
 
 type Server struct {

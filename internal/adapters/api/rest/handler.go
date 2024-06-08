@@ -1,7 +1,6 @@
 package rest
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,15 +10,13 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/playmixer/short-link/internal/adapters/database"
 	"github.com/playmixer/short-link/internal/adapters/models"
 	"github.com/playmixer/short-link/internal/adapters/shortnererror"
 	"go.uber.org/zap"
 )
 
 func (s *Server) handlerMain(c *gin.Context) {
-	ctx, cancel := context.WithCancel(c.Request.Context())
-	defer cancel()
+	ctx := c.Request.Context()
 
 	c.Writer.Header().Add(ContentType, "text/plain")
 
@@ -63,8 +60,7 @@ func (s *Server) handlerMain(c *gin.Context) {
 }
 
 func (s *Server) handlerShort(c *gin.Context) {
-	ctx, cancel := context.WithCancel(c.Request.Context())
-	defer cancel()
+	ctx := c.Request.Context()
 
 	c.Writer.Header().Add(ContentType, "text/plain")
 
@@ -85,7 +81,7 @@ func (s *Server) handlerShort(c *gin.Context) {
 }
 
 func (s *Server) handlerAPIShorten(c *gin.Context) {
-	ctx := context.Background()
+	ctx := c.Request.Context()
 	b, err := io.ReadAll(c.Request.Body)
 	if err != nil {
 		s.log.Error("can`t read body from request", zap.Error(err))
@@ -111,39 +107,27 @@ func (s *Server) handlerAPIShorten(c *gin.Context) {
 	}
 
 	sLink, err := s.short.Shorty(ctx, req.URL)
-	if err != nil && errors.Is(err, shortnererror.ErrNotUnique) {
-		sLink, err = s.short.GetShortByOriginal(ctx, req.URL)
-		if err != nil {
-			s.log.Error("can`t found original URI", zap.String("original_url", req.URL))
-			c.Writer.WriteHeader(http.StatusInternalServerError)
+	if err != nil {
+		if errors.Is(err, shortnererror.ErrNotUnique) {
+			c.Writer.Header().Add(ContentType, ApplicationJSON)
+			c.JSON(http.StatusConflict, gin.H{
+				"result": s.baseLink(sLink),
+			})
 			return
 		}
-		c.Writer.Header().Add(ContentType, "application/json")
-		c.JSON(http.StatusConflict, gin.H{
-			"result": s.baseLink(sLink),
-		})
-		return
-	} else if err != nil {
 		s.log.Error(fmt.Sprintf("can`t shorted URI `%s`", b), zap.Error(err))
 		c.Writer.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	c.Writer.Header().Add(ContentType, "application/json")
+	c.Writer.Header().Add(ContentType, ApplicationJSON)
 	c.JSON(http.StatusCreated, gin.H{
 		"result": s.baseLink(sLink),
 	})
 }
 
 func (s *Server) handlerPing(c *gin.Context) {
-	conn, err := database.Conn()
-	if err != nil {
-		s.log.Info("failed create connect to database", zap.Error(err))
-		c.Writer.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	err = conn.Ping()
+	err := s.short.PingStore(c.Request.Context())
 	if err != nil {
 		s.log.Info("failed ping database", zap.Error(err))
 		c.Writer.WriteHeader(http.StatusInternalServerError)
@@ -154,7 +138,7 @@ func (s *Server) handlerPing(c *gin.Context) {
 }
 
 func (s *Server) handlerAPIShortenBatch(c *gin.Context) {
-	ctx := context.Background()
+	ctx := c.Request.Context()
 	b, err := io.ReadAll(c.Request.Body)
 	if err != nil {
 		s.log.Error("can`t read body from request", zap.Error(err))
@@ -178,15 +162,20 @@ func (s *Server) handlerAPIShortenBatch(c *gin.Context) {
 	}
 
 	sLink, err := s.short.ShortyBatch(ctx, req)
+	for i, v := range sLink {
+		sLink[i].ShortURL = s.baseLink(v.ShortURL)
+	}
 	if err != nil {
+		if errors.Is(err, shortnererror.ErrNotUnique) {
+			c.Writer.Header().Add(ContentType, ApplicationJSON)
+			c.JSON(http.StatusConflict, sLink)
+			return
+		}
 		s.log.Error(fmt.Sprintf("can`t shorted URI `%s`", b), zap.Error(err))
 		c.Writer.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	for i := range sLink {
-		sLink[i].ShortURL = fmt.Sprintf("%s/%s", s.baseURL, sLink[i].ShortURL)
-	}
 
-	c.Writer.Header().Add(ContentType, "application/json")
+	c.Writer.Header().Add(ContentType, ApplicationJSON)
 	c.JSON(http.StatusCreated, sLink)
 }

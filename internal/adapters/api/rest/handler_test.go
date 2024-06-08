@@ -3,6 +3,7 @@ package rest_test
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -20,6 +21,7 @@ import (
 	"github.com/playmixer/short-link/internal/core/shortner"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
 var (
@@ -110,7 +112,7 @@ func Test_mainHandle(t *testing.T) {
 		},
 	}
 
-	store, err := storage.NewStore(&storage.Config{Memory: &memory.Config{}})
+	store, err := storage.NewStore(context.Background(), &storage.Config{Memory: &memory.Config{}}, zap.NewNop())
 	if err != nil {
 		t.Errorf("failed initialize storage: %v", err)
 		return
@@ -168,7 +170,7 @@ func Test_shortHandle(t *testing.T) {
 		},
 	}
 
-	store, err := storage.NewStore(&storage.Config{Memory: &memory.Config{}})
+	store, err := storage.NewStore(context.Background(), &storage.Config{Memory: &memory.Config{}}, zap.NewNop())
 	if err != nil {
 		t.Errorf("failed initialize storage: %v", err)
 		return
@@ -264,7 +266,7 @@ func Test_apiShorten(t *testing.T) {
 		},
 	}
 
-	store, err := storage.NewStore(&storage.Config{Memory: &memory.Config{}})
+	store, err := storage.NewStore(context.Background(), &storage.Config{Memory: &memory.Config{}}, zap.NewNop())
 	if err != nil {
 		t.Errorf("failed initialize storage: %v", err)
 		return
@@ -334,7 +336,7 @@ func Test_Gzip(t *testing.T) {
 		},
 	}
 
-	store, err := storage.NewStore(&storage.Config{Memory: &memory.Config{}})
+	store, err := storage.NewStore(context.Background(), &storage.Config{Memory: &memory.Config{}}, zap.NewNop())
 	if err != nil {
 		t.Errorf("failed initialize storage: %v", err)
 		return

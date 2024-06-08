@@ -27,19 +27,19 @@ func New(cfg *Config) (*Store, error) {
 	}, nil
 }
 
-func (s *Store) Set(ctx context.Context, key, value string) error {
+func (s *Store) Set(ctx context.Context, key, value string) (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	for _, v := range s.data {
+	for k, v := range s.data {
 		if v == value {
-			return shortnererror.ErrNotUnique
+			return k, shortnererror.ErrNotUnique
 		}
 	}
 	if _, ok := s.data[key]; ok {
-		return fmt.Errorf("short link `%s` is exists", key)
+		return key, shortnererror.ErrDuplicateShortURL
 	}
 	s.data[key] = value
-	return nil
+	return key, nil
 }
 
 func (s *Store) Get(ctx context.Context, key string) (string, error) {
@@ -51,14 +51,33 @@ func (s *Store) Get(ctx context.Context, key string) (string, error) {
 	return "", ErrNotFoundKey
 }
 
-func (s *Store) SetBatch(ctx context.Context, batch []models.ShortLink) error {
-	for _, req := range batch {
-		err := s.Set(ctx, req.ShortURL, req.OriginalURL)
-		if err != nil {
-			return fmt.Errorf("set link `%s` failed: %w", req.OriginalURL, err)
+func (s *Store) SetBatch(ctx context.Context, batch []models.ShortLink) (output []models.ShortLink, err error) {
+	for _, b := range batch {
+		if _, ok := s.data[b.ShortURL]; ok {
+			return []models.ShortLink{}, shortnererror.ErrDuplicateShortURL
+		}
+		for k, d := range s.data {
+			if d == b.OriginalURL {
+				return []models.ShortLink{{ShortURL: k, OriginalURL: b.OriginalURL}}, shortnererror.ErrDuplicateShortURL
+			}
 		}
 	}
-	return nil
+
+	for _, b := range batch {
+		if _, err := s.Get(ctx, b.ShortURL); err == nil {
+			return []models.ShortLink{}, shortnererror.ErrDuplicateShortURL
+		}
+		if shortURL, err := s.GetByOriginal(ctx, b.OriginalURL); err == nil {
+			return []models.ShortLink{{ShortURL: shortURL, OriginalURL: b.OriginalURL}}, shortnererror.ErrNotUnique
+		}
+	}
+	for _, req := range batch {
+		_, err := s.Set(ctx, req.ShortURL, req.OriginalURL)
+		if err != nil {
+			return output, fmt.Errorf("set link `%s` failed: %w", req.OriginalURL, err)
+		}
+	}
+	return output, nil
 }
 
 func (s *Store) GetByOriginal(ctx context.Context, original string) (string, error) {
@@ -70,4 +89,14 @@ func (s *Store) GetByOriginal(ctx context.Context, original string) (string, err
 		}
 	}
 	return "", ErrNotFoundValue
+}
+
+func (s *Store) DeleteShortURL(ctx context.Context, short string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.data, short)
+}
+
+func (s *Store) Ping(ctx context.Context) error {
+	return nil
 }

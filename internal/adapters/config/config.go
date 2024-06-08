@@ -6,6 +6,7 @@ import (
 
 	"github.com/caarlos0/env/v11"
 	"github.com/joho/godotenv"
+	"go.uber.org/zap"
 
 	"github.com/playmixer/short-link/internal/adapters/api"
 	"github.com/playmixer/short-link/internal/adapters/api/rest"
@@ -14,10 +15,6 @@ import (
 	"github.com/playmixer/short-link/internal/adapters/storage/file"
 	"github.com/playmixer/short-link/internal/adapters/storage/memory"
 	"github.com/playmixer/short-link/internal/core/shortner"
-)
-
-var (
-	Cfg *Config
 )
 
 type Config struct {
@@ -37,6 +34,7 @@ func Init() (*Config, error) {
 			Memory:   &memory.Config{},
 		},
 	}
+	cfg.Store.Database.SetLogger(zap.NewNop())
 
 	flag.StringVar(&cfg.API.Rest.Addr, "a", "localhost:8080", "address listen")
 	flag.StringVar(&cfg.BaseURL, "b", "http://localhost:8080", "base url")
@@ -50,8 +48,6 @@ func Init() (*Config, error) {
 	if err := env.Parse(&cfg); err != nil {
 		return nil, fmt.Errorf("error parse config %w", err)
 	}
-
-	Cfg = &cfg
 
 	return &cfg, nil
 }
