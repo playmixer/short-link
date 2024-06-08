@@ -41,16 +41,11 @@ func (s *Server) handlerMain(c *gin.Context) {
 	}
 
 	sLink, err := s.short.Shorty(ctx, link)
-	if err != nil && errors.Is(err, shortnererror.ErrNotUnique) {
-		sLink, err = s.short.GetShortByOriginal(ctx, link)
-		if err != nil {
-			s.log.Error("can`t found original URI", zap.String("original_url", link))
-			c.Writer.WriteHeader(http.StatusInternalServerError)
+	if err != nil {
+		if errors.Is(err, shortnererror.ErrNotUnique) {
+			c.String(http.StatusConflict, s.baseLink(sLink))
 			return
 		}
-		c.String(http.StatusConflict, s.baseLink(sLink))
-		return
-	} else if err != nil {
 		s.log.Error(fmt.Sprintf("can`t shorted URI `%s`", b), zap.Error(err))
 		c.Writer.WriteHeader(http.StatusInternalServerError)
 		return

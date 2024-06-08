@@ -53,17 +53,6 @@ func (s *Store) Get(ctx context.Context, key string) (string, error) {
 
 func (s *Store) SetBatch(ctx context.Context, batch []models.ShortLink) (output []models.ShortLink, err error) {
 	for _, b := range batch {
-		if _, ok := s.data[b.ShortURL]; ok {
-			return []models.ShortLink{}, shortnererror.ErrDuplicateShortURL
-		}
-		for k, d := range s.data {
-			if d == b.OriginalURL {
-				return []models.ShortLink{{ShortURL: k, OriginalURL: b.OriginalURL}}, shortnererror.ErrDuplicateShortURL
-			}
-		}
-	}
-
-	for _, b := range batch {
 		if _, err := s.Get(ctx, b.ShortURL); err == nil {
 			return []models.ShortLink{}, shortnererror.ErrDuplicateShortURL
 		}
@@ -71,11 +60,18 @@ func (s *Store) SetBatch(ctx context.Context, batch []models.ShortLink) (output 
 			return []models.ShortLink{{ShortURL: shortURL, OriginalURL: b.OriginalURL}}, shortnererror.ErrNotUnique
 		}
 	}
+	shortAppled := make([]string, 0)
 	for _, req := range batch {
 		_, err := s.Set(ctx, req.ShortURL, req.OriginalURL)
 		if err != nil {
+			if !errors.Is(err, shortnererror.ErrDuplicateShortURL) {
+				for _, a := range shortAppled {
+					s.DeleteShortURL(ctx, a)
+				}
+			}
 			return output, fmt.Errorf("set link `%s` failed: %w", req.OriginalURL, err)
 		}
+		shortAppled = append(shortAppled, req.ShortURL)
 	}
 	return output, nil
 }
