@@ -10,7 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/playmixer/short-link/internal/adapters/models"
-	"github.com/playmixer/short-link/internal/adapters/shortnererror"
+	"github.com/playmixer/short-link/internal/adapters/storage/storeerror"
 	"go.uber.org/zap"
 )
 
@@ -61,14 +61,14 @@ func New(ctx context.Context, cfg *Config) (*Store, error) {
 func (s *Store) Set(ctx context.Context, short, original string) (output string, err error) {
 	_, err = s.pool.Exec(ctx, "insert into short_link (short_url, original_url) values ($1, $2)", short, original)
 	var sqlError *pgconn.PgError
-	if err != nil && errors.As(err, &sqlError) && pgerrcode.UniqueViolation == sqlError.Code {
-		output, err = s.GetByOriginal(ctx, original)
-		if err != nil {
-			return output, fmt.Errorf("failed select URL %s %w %w", original, err, shortnererror.ErrDuplicateShortURL)
-		}
-		return output, fmt.Errorf("pgerror: %w: %w", shortnererror.ErrNotUnique, err)
-	}
 	if err != nil {
+		if errors.As(err, &sqlError) && pgerrcode.UniqueViolation == sqlError.Code {
+			output, err = s.GetByOriginal(ctx, original)
+			if err != nil {
+				return output, fmt.Errorf("failed select URL %s %w %w", original, err, storeerror.ErrDuplicateShortURL)
+			}
+			return output, fmt.Errorf("pgerror: %w: %w", storeerror.ErrNotUnique, err)
+		}
 		return output, fmt.Errorf("failed setting short url: %w", err)
 	}
 	return short, nil
@@ -110,15 +110,14 @@ func (s *Store) SetBatch(ctx context.Context, data []models.ShortLink) (output [
 		if err != nil {
 			var pgErr *pgconn.PgError
 			if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
-				reserr = errors.Join(err, shortnererror.ErrNotUnique)
+				reserr = errors.Join(err, storeerror.ErrNotUnique)
 				v.ShortURL, err = s.GetByOriginal(ctx, v.OriginalURL)
 				if err != nil {
-					return output, fmt.Errorf("failed select URL %s %w %w", v.OriginalURL, err, shortnererror.ErrDuplicateShortURL)
+					return output, fmt.Errorf("failed select URL %s %w %w", v.OriginalURL, err, storeerror.ErrDuplicateShortURL)
 				}
 				return []models.ShortLink{v}, fmt.Errorf("URL %s is not unique: %w", v.OriginalURL, reserr)
-			} else {
-				return []models.ShortLink{}, fmt.Errorf("failed insert URL %s: %w", v.OriginalURL, err)
 			}
+			return []models.ShortLink{}, fmt.Errorf("failed insert URL %s: %w", v.OriginalURL, err)
 		}
 		output = append(output, v)
 	}

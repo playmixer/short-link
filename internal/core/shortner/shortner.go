@@ -7,7 +7,7 @@ import (
 	"net/url"
 
 	"github.com/playmixer/short-link/internal/adapters/models"
-	"github.com/playmixer/short-link/internal/adapters/shortnererror"
+	"github.com/playmixer/short-link/internal/adapters/storage/storeerror"
 	"github.com/playmixer/short-link/pkg/util"
 )
 
@@ -51,7 +51,7 @@ func (s *Shortner) Shorty(ctx context.Context, link string) (sLink string, err e
 	for {
 		sLink = util.RandomString(LengthShortLink)
 		sLink, err = s.store.Set(ctx, sLink, link)
-		if err != nil && !errors.Is(err, shortnererror.ErrDuplicateShortURL) {
+		if err != nil && !errors.Is(err, storeerror.ErrDuplicateShortURL) {
 			return sLink, fmt.Errorf("failed setting URL %s: %w", link, err)
 		}
 		if err == nil {
@@ -105,14 +105,6 @@ func (s *Shortner) ShortyBatch(ctx context.Context, batch []models.ShortenBatchR
 	}
 
 	return output, nil
-}
-
-func (s *Shortner) GetShortByOriginal(ctx context.Context, original string) (string, error) {
-	link, err := s.store.GetByOriginal(ctx, original)
-	if err != nil {
-		return "", fmt.Errorf("error getting link: %w", err)
-	}
-	return link, nil
 }
 
 func (s *Shortner) PingStore(ctx context.Context) error {

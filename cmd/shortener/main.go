@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 
@@ -14,25 +15,28 @@ import (
 )
 
 func main() {
+	if err := run(); !errors.Is(err, http.ErrServerClosed) {
+		log.Fatal(err)
+	}
+}
+
+func run() error {
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	cfg, err := config.Init()
 	if err != nil {
-		log.Fatalf("failed initialize config: %v", err)
-		return
+		return fmt.Errorf("failed initialize config: %w", err)
 	}
 
 	lgr, err := logger.New(cfg.LogLevel)
 	if err != nil {
-		log.Fatalf("failed initialize logger: %v", err)
-		return
+		return fmt.Errorf("failed initialize logger: %w", err)
 	}
 
 	store, err := storage.NewStore(ctx, &cfg.Store, lgr)
 	if err != nil {
-		cancel()
-		log.Fatalf("failed initialize storage: %v", err)
-		return
+		return fmt.Errorf("failed initialize storage: %w", err)
 	}
 
 	short := shortner.New(store)
@@ -42,9 +46,9 @@ func main() {
 		rest.BaseURL(cfg.BaseURL),
 		rest.Logger(lgr),
 	)
-	if err := srv.Run(); !errors.Is(err, http.ErrServerClosed) {
-		cancel()
-		log.Fatal(err)
+	err = srv.Run()
+	if err != nil {
+		return fmt.Errorf("stop server: %w", err)
 	}
-	cancel()
+	return nil
 }

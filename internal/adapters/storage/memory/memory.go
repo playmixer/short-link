@@ -7,12 +7,7 @@ import (
 	"sync"
 
 	"github.com/playmixer/short-link/internal/adapters/models"
-	"github.com/playmixer/short-link/internal/adapters/shortnererror"
-)
-
-var (
-	ErrNotFoundKey   = errors.New("not found value by key")
-	ErrNotFoundValue = errors.New("not found value by value")
+	"github.com/playmixer/short-link/internal/adapters/storage/storeerror"
 )
 
 type Store struct {
@@ -32,11 +27,11 @@ func (s *Store) Set(ctx context.Context, key, value string) (string, error) {
 	defer s.mu.Unlock()
 	for k, v := range s.data {
 		if v == value {
-			return k, shortnererror.ErrNotUnique
+			return k, storeerror.ErrNotUnique
 		}
 	}
 	if _, ok := s.data[key]; ok {
-		return key, shortnererror.ErrDuplicateShortURL
+		return key, storeerror.ErrDuplicateShortURL
 	}
 	s.data[key] = value
 	return key, nil
@@ -48,23 +43,23 @@ func (s *Store) Get(ctx context.Context, key string) (string, error) {
 	if _, ok := s.data[key]; ok {
 		return s.data[key], nil
 	}
-	return "", ErrNotFoundKey
+	return "", storeerror.ErrNotFoundKey
 }
 
 func (s *Store) SetBatch(ctx context.Context, batch []models.ShortLink) (output []models.ShortLink, err error) {
 	for _, b := range batch {
 		if _, err := s.Get(ctx, b.ShortURL); err == nil {
-			return []models.ShortLink{}, shortnererror.ErrDuplicateShortURL
+			return []models.ShortLink{}, storeerror.ErrDuplicateShortURL
 		}
 		if shortURL, err := s.GetByOriginal(ctx, b.OriginalURL); err == nil {
-			return []models.ShortLink{{ShortURL: shortURL, OriginalURL: b.OriginalURL}}, shortnererror.ErrNotUnique
+			return []models.ShortLink{{ShortURL: shortURL, OriginalURL: b.OriginalURL}}, storeerror.ErrNotUnique
 		}
 	}
 	shortAppled := make([]string, 0)
 	for _, req := range batch {
 		_, err := s.Set(ctx, req.ShortURL, req.OriginalURL)
 		if err != nil {
-			if !errors.Is(err, shortnererror.ErrDuplicateShortURL) {
+			if !errors.Is(err, storeerror.ErrDuplicateShortURL) {
 				for _, a := range shortAppled {
 					s.DeleteShortURL(ctx, a)
 				}
@@ -84,7 +79,7 @@ func (s *Store) GetByOriginal(ctx context.Context, original string) (string, err
 			return k, nil
 		}
 	}
-	return "", ErrNotFoundValue
+	return "", fmt.Errorf("not found short by original: %s", original)
 }
 
 func (s *Store) DeleteShortURL(ctx context.Context, short string) {

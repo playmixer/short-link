@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/playmixer/short-link/internal/adapters/models"
-	"github.com/playmixer/short-link/internal/adapters/shortnererror"
 	"github.com/playmixer/short-link/internal/adapters/storage/memory"
+	"github.com/playmixer/short-link/internal/adapters/storage/storeerror"
 )
 
 type storeItem struct {
@@ -116,10 +116,10 @@ func (s *Store) Set(ctx context.Context, key, value string) (string, error) {
 func (s *Store) SetBatch(ctx context.Context, batch []models.ShortLink) (output []models.ShortLink, err error) {
 	for _, b := range batch {
 		if _, err := s.Store.Get(ctx, b.ShortURL); err == nil {
-			return []models.ShortLink{}, shortnererror.ErrDuplicateShortURL
+			return []models.ShortLink{}, storeerror.ErrDuplicateShortURL
 		}
 		if shortURL, err := s.Store.GetByOriginal(ctx, b.OriginalURL); err == nil {
-			return []models.ShortLink{{ShortURL: shortURL, OriginalURL: b.OriginalURL}}, shortnererror.ErrNotUnique
+			return []models.ShortLink{{ShortURL: shortURL, OriginalURL: b.OriginalURL}}, storeerror.ErrNotUnique
 		}
 	}
 

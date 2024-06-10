@@ -11,7 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/playmixer/short-link/internal/adapters/models"
-	"github.com/playmixer/short-link/internal/adapters/shortnererror"
+	"github.com/playmixer/short-link/internal/adapters/storage/storeerror"
 	"go.uber.org/zap"
 )
 
@@ -42,7 +42,7 @@ func (s *Server) handlerMain(c *gin.Context) {
 
 	sLink, err := s.short.Shorty(ctx, link)
 	if err != nil {
-		if errors.Is(err, shortnererror.ErrNotUnique) {
+		if errors.Is(err, storeerror.ErrNotUnique) {
 			c.String(http.StatusConflict, s.baseLink(sLink))
 			return
 		}
@@ -103,7 +103,7 @@ func (s *Server) handlerAPIShorten(c *gin.Context) {
 
 	sLink, err := s.short.Shorty(ctx, req.URL)
 	if err != nil {
-		if errors.Is(err, shortnererror.ErrNotUnique) {
+		if errors.Is(err, storeerror.ErrNotUnique) {
 			c.Writer.Header().Add(ContentType, ApplicationJSON)
 			c.JSON(http.StatusConflict, gin.H{
 				"result": s.baseLink(sLink),
@@ -161,7 +161,7 @@ func (s *Server) handlerAPIShortenBatch(c *gin.Context) {
 		sLink[i].ShortURL = s.baseLink(v.ShortURL)
 	}
 	if err != nil {
-		if errors.Is(err, shortnererror.ErrNotUnique) {
+		if errors.Is(err, storeerror.ErrNotUnique) {
 			c.Writer.Header().Add(ContentType, ApplicationJSON)
 			c.JSON(http.StatusConflict, sLink)
 			return

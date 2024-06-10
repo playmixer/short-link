@@ -19,7 +19,6 @@ type Shortner interface {
 	Shorty(ctx context.Context, link string) (string, error)
 	ShortyBatch(ctx context.Context, links []models.ShortenBatchRequest) ([]models.ShortenBatchResponse, error)
 	GetURL(ctx context.Context, short string) (string, error)
-	GetShortByOriginal(ctx context.Context, original string) (string, error)
 	PingStore(ctx context.Context) error
 }
 
