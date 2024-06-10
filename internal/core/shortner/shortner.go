@@ -20,7 +20,6 @@ type Store interface {
 	Get(ctx context.Context, short string) (string, error)
 	Set(ctx context.Context, short string, url string) (string, error)
 	SetBatch(ctx context.Context, batch []models.ShortLink) ([]models.ShortLink, error)
-	GetByOriginal(ctx context.Context, original string) (string, error)
 	Ping(ctx context.Context) error
 }
 
