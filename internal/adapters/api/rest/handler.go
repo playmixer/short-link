@@ -46,7 +46,7 @@ func (s *Server) handlerMain(c *gin.Context) {
 			c.String(http.StatusConflict, s.baseLink(sLink))
 			return
 		}
-		s.log.Error(fmt.Sprintf("can`t shorted URI `%s`", b), zap.Error(err))
+		s.log.Error("can't shorten URI", zap.String("URI", string(b)), zap.Error(err))
 		c.Writer.WriteHeader(http.StatusInternalServerError)
 		return
 	}
