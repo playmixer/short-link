@@ -2,6 +2,7 @@ package file
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,7 +11,9 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/playmixer/short-link/internal/adapters/models"
 	"github.com/playmixer/short-link/internal/adapters/storage/memory"
+	"github.com/playmixer/short-link/internal/adapters/storage/storeerror"
 )
 
 type storeItem struct {
@@ -64,7 +67,7 @@ func New(cfg *Config) (*Store, error) {
 			if err != nil {
 				return nil, fmt.Errorf("failed unmarshal data from storage: %w", err)
 			}
-			err = s.Store.Set(item.ShortURL, item.OriginalURL)
+			_, err = s.Store.Set(context.Background(), item.ShortURL, item.OriginalURL)
 			if err != nil {
 				return nil, fmt.Errorf("failed set: %w", err)
 			}
@@ -78,31 +81,53 @@ func New(cfg *Config) (*Store, error) {
 	return s, nil
 }
 
-func (s *Store) Set(key, value string) error {
+func (s *Store) Set(ctx context.Context, key, value string) (string, error) {
+	shortURL, err := s.Store.Set(ctx, key, value)
+	if err != nil {
+		return shortURL, fmt.Errorf("failed setting data: %w", err)
+	}
+
 	if s.filepath != "" {
 		f, err := os.OpenFile(s.filepath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, os.ModePerm)
 		if err != nil {
-			return fmt.Errorf("failed open file: %w", err)
+			s.Store.DeleteShortURL(ctx, shortURL)
+			return "", fmt.Errorf("failed open file: %w", err)
 		}
 		item := storeItem{
 			ID:          strconv.Itoa(time.Now().UTC().Nanosecond()),
-			ShortURL:    key,
+			ShortURL:    shortURL,
 			OriginalURL: value,
 		}
 		b, err := json.Marshal(item)
 		if err != nil {
-			return fmt.Errorf("failed marshal storage item: %w", err)
+			s.Store.DeleteShortURL(ctx, shortURL)
+			return "", fmt.Errorf("failed marshal storage item: %w", err)
 		}
 		_, err = f.WriteString(string(b) + "\n")
 		if err != nil {
-			return fmt.Errorf("failed write to file storage: %w", err)
+			s.Store.DeleteShortURL(ctx, shortURL)
+			return "", fmt.Errorf("failed write to file storage: %w", err)
 		}
 	}
 
-	err := s.Store.Set(key, value)
-	if err != nil {
-		return fmt.Errorf("failed setted data: %w", err)
+	return shortURL, nil
+}
+
+func (s *Store) SetBatch(ctx context.Context, batch []models.ShortLink) (output []models.ShortLink, err error) {
+	for _, b := range batch {
+		if _, err := s.Store.Get(ctx, b.ShortURL); err == nil {
+			return []models.ShortLink{}, storeerror.ErrDuplicateShortURL
+		}
+		if shortURL, err := s.Store.GetByOriginal(ctx, b.OriginalURL); err == nil {
+			return []models.ShortLink{{ShortURL: shortURL, OriginalURL: b.OriginalURL}}, storeerror.ErrNotUnique
+		}
 	}
 
-	return nil
+	for _, req := range batch {
+		_, err := s.Set(ctx, req.ShortURL, req.OriginalURL)
+		if err != nil {
+			return output, fmt.Errorf("failed setted data: %w", err)
+		}
+	}
+	return output, nil
 }

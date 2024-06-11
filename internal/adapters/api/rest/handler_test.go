@@ -3,6 +3,7 @@ package rest_test
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -20,6 +21,7 @@ import (
 	"github.com/playmixer/short-link/internal/core/shortner"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
 var (
@@ -94,9 +96,23 @@ func Test_mainHandle(t *testing.T) {
 				ContentType: "text/plain",
 			},
 		},
+		{
+			name: "duplicate",
+			want: struct {
+				StatusCode  int
+				Response    string
+				Request     string
+				ContentType string
+			}{
+				StatusCode:  http.StatusConflict,
+				Response:    "",
+				Request:     "https://practicum.yandex.ru/",
+				ContentType: "text/plain",
+			},
+		},
 	}
 
-	store, err := storage.NewStore(&storage.Config{Memory: &memory.Config{}})
+	store, err := storage.NewStore(context.Background(), &storage.Config{Memory: &memory.Config{}}, zap.NewNop())
 	if err != nil {
 		t.Errorf("failed initialize storage: %v", err)
 		return
@@ -154,7 +170,7 @@ func Test_shortHandle(t *testing.T) {
 		},
 	}
 
-	store, err := storage.NewStore(&storage.Config{Memory: &memory.Config{}})
+	store, err := storage.NewStore(context.Background(), &storage.Config{Memory: &memory.Config{}}, zap.NewNop())
 	if err != nil {
 		t.Errorf("failed initialize storage: %v", err)
 		return
@@ -234,9 +250,23 @@ func Test_apiShorten(t *testing.T) {
 				ContentType: "application/json",
 			},
 		},
+		{
+			name: "conflict",
+			want: struct {
+				StatusCode  int
+				Response    string
+				Request     tRequest
+				ContentType string
+			}{
+				StatusCode:  http.StatusConflict,
+				Response:    "",
+				Request:     tRequest{URL: "https://practicum.yandex.ru/"},
+				ContentType: "application/json",
+			},
+		},
 	}
 
-	store, err := storage.NewStore(&storage.Config{Memory: &memory.Config{}})
+	store, err := storage.NewStore(context.Background(), &storage.Config{Memory: &memory.Config{}}, zap.NewNop())
 	if err != nil {
 		t.Errorf("failed initialize storage: %v", err)
 		return
@@ -306,7 +336,7 @@ func Test_Gzip(t *testing.T) {
 		},
 	}
 
-	store, err := storage.NewStore(&storage.Config{Memory: &memory.Config{}})
+	store, err := storage.NewStore(context.Background(), &storage.Config{Memory: &memory.Config{}}, zap.NewNop())
 	if err != nil {
 		t.Errorf("failed initialize storage: %v", err)
 		return

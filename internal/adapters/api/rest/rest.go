@@ -1,25 +1,25 @@
 package rest
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/gin-gonic/gin"
+	"github.com/playmixer/short-link/internal/adapters/models"
 	"go.uber.org/zap"
 )
 
 const (
-	ContentLength string = "Content-Length"
-	ContentType   string = "Content-Type"
+	ContentLength   string = "Content-Length"
+	ContentType     string = "Content-Type"
+	ApplicationJSON string = "application/json"
 )
 
-type Store interface {
-	Set(key, value string)
-	Get(key string) (string, error)
-}
-
 type Shortner interface {
-	Shorty(link string) (string, error)
-	GetURL(short string) (string, error)
+	Shorty(ctx context.Context, link string) (string, error)
+	ShortyBatch(ctx context.Context, links []models.ShortenBatchRequest) ([]models.ShortenBatchResponse, error)
+	GetURL(ctx context.Context, short string) (string, error)
+	PingStore(ctx context.Context) error
 }
 
 type Server struct {
@@ -71,11 +71,13 @@ func (s *Server) SetupRouter() *gin.Engine {
 	)
 	r.POST("/", s.handlerMain)
 	r.GET("/:id", s.handlerShort)
+	r.GET("/ping", s.handlerPing)
 
 	api := r.Group("/api")
 	api.Use(s.GzipCompress())
 	{
 		api.POST("/shorten", s.handlerAPIShorten)
+		api.POST("/shorten/batch", s.handlerAPIShortenBatch)
 	}
 
 	return r
@@ -87,4 +89,8 @@ func (s *Server) Run() error {
 		return fmt.Errorf("server has failed: %w", err)
 	}
 	return nil
+}
+
+func (s *Server) baseLink(short string) string {
+	return fmt.Sprintf("%s/%s", s.baseURL, short)
 }

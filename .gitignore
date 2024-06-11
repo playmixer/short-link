@@ -22,8 +22,8 @@ vendor/
 .idea
 .vscode
 
-go-lint.bat
 .env
 golangci-lint
 
 tmp
+scripts
