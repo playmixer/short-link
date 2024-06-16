@@ -17,7 +17,7 @@ var (
 )
 
 type Store interface {
-	Get(ctx context.Context, userID, short string) (string, error)
+	Get(ctx context.Context, short string) (string, error)
 	GetAllURL(ctx context.Context, userID string) ([]models.ShortenURL, error)
 	Set(ctx context.Context, userID string, short string, url string) (string, error)
 	SetBatch(ctx context.Context, userID string, batch []models.ShortLink) ([]models.ShortLink, error)
@@ -66,8 +66,8 @@ func (s *Shortner) Shorty(ctx context.Context, userID, link string) (sLink strin
 	return sLink, fmt.Errorf("failed to generate a unique short link: %w", err)
 }
 
-func (s *Shortner) GetURL(ctx context.Context, userID, short string) (string, error) {
-	link, err := s.store.Get(ctx, userID, short)
+func (s *Shortner) GetURL(ctx context.Context, short string) (string, error) {
+	link, err := s.store.Get(ctx, short)
 	if err != nil {
 		return "", fmt.Errorf("error getting link: %w", err)
 	}

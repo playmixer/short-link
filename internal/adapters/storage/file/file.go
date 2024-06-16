@@ -120,7 +120,7 @@ func (s *Store) SetBatch(ctx context.Context, userID string, batch []models.Shor
 	err error,
 ) {
 	for _, b := range batch {
-		if _, err := s.Store.Get(ctx, userID, b.ShortURL); err == nil {
+		if _, err := s.Store.GetByUser(ctx, userID, b.ShortURL); err == nil {
 			return []models.ShortLink{}, storeerror.ErrDuplicateShortURL
 		}
 		if shortURL, err := s.Store.GetByOriginal(ctx, userID, b.OriginalURL); err == nil {

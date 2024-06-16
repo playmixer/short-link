@@ -79,10 +79,10 @@ func (s *Store) Set(ctx context.Context, userID, short, original string) (output
 	return short, nil
 }
 
-func (s *Store) Get(ctx context.Context, userID, key string) (string, error) {
+func (s *Store) Get(ctx context.Context, short string) (string, error) {
 	row := s.pool.QueryRow(ctx,
-		"select original_url from short_link where short_url =$1 and user_id = $2",
-		key, userID,
+		"select original_url from short_link where short_url = $1",
+		short,
 	)
 	var value string
 	err := row.Scan(&value)

@@ -49,11 +49,22 @@ func (s *Store) Set(ctx context.Context, userID, shortURL, originalURL string) (
 	return shortURL, nil
 }
 
-func (s *Store) Get(ctx context.Context, userID, shortURL string) (string, error) {
+func (s *Store) GetByUser(ctx context.Context, userID, shortURL string) (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for _, v := range s.data {
 		if v.ShortURL == shortURL && v.userID == userID {
+			return v.OriginalURL, nil
+		}
+	}
+	return "", storeerror.ErrNotFoundKey
+}
+
+func (s *Store) Get(ctx context.Context, shortURL string) (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, v := range s.data {
+		if v.ShortURL == shortURL {
 			return v.OriginalURL, nil
 		}
 	}
@@ -65,7 +76,7 @@ func (s *Store) SetBatch(ctx context.Context, userID string, batch []models.Shor
 	err error,
 ) {
 	for _, b := range batch {
-		if _, err := s.Get(ctx, userID, b.ShortURL); err == nil {
+		if _, err := s.GetByUser(ctx, userID, b.ShortURL); err == nil {
 			return []models.ShortLink{}, storeerror.ErrDuplicateShortURL
 		}
 		if shortURL, err := s.GetByOriginal(ctx, userID, b.OriginalURL); err == nil {
@@ -93,7 +104,7 @@ func (s *Store) GetByOriginal(ctx context.Context, userID, originalURL string) (
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for _, v := range s.data {
-		if v.OriginalURL == originalURL {
+		if v.OriginalURL == originalURL && v.userID == userID {
 			return v.ShortURL, nil
 		}
 	}

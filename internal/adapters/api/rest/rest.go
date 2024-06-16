@@ -27,7 +27,7 @@ type Shortner interface {
 		[]models.ShortenBatchResponse,
 		error,
 	)
-	GetURL(ctx context.Context, userID string, short string) (string, error)
+	GetURL(ctx context.Context, short string) (string, error)
 	GetAllURL(ctx context.Context, userID string) ([]models.ShortenURL, error)
 	PingStore(ctx context.Context) error
 }
@@ -86,18 +86,30 @@ func (s *Server) SetupRouter() *gin.Engine {
 	r.Use(
 		s.Logger(),
 		s.GzipDecompress(),
-		s.Authenticate(),
 	)
-	r.POST("/", s.handlerMain)
-	r.GET("/:id", s.handlerShort)
-	r.GET("/ping", s.handlerPing)
 
-	api := r.Group("/api")
-	api.Use(s.GzipCompress())
+	auth := r.Group("/")
 	{
-		api.POST("/shorten", s.handlerAPIShorten)
-		api.POST("/shorten/batch", s.handlerAPIShortenBatch)
-		api.GET("/user/urls", s.handlerAPIGetUserURLs)
+		auth.Use(s.CheckCookies())
+		auth.POST("/", s.handlerMain)
+		auth.GET("/:id", s.handlerShort)
+		auth.GET("/ping", s.handlerPing)
+
+		api := auth.Group("/api")
+		api.Use(s.GzipCompress())
+		{
+			api.POST("/shorten", s.handlerAPIShorten)
+			api.POST("/shorten/batch", s.handlerAPIShortenBatch)
+		}
+	}
+
+	userApi := r.Group("/api/user")
+	userApi.Use(
+		s.GzipCompress(),
+		s.Auth(),
+	)
+	{
+		userApi.GET("/urls", s.handlerAPIGetUserURLs)
 	}
 
 	return r

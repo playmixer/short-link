@@ -68,10 +68,7 @@ func (s *Server) handlerShort(c *gin.Context) {
 		return
 	}
 
-	cookieUserID, _ := c.Request.Cookie(CookieNameUserID)
-	userID, _ := s.verifyCookie(cookieUserID.Value)
-
-	link, err := s.short.GetURL(ctx, userID, id)
+	link, err := s.short.GetURL(ctx, id)
 	if err != nil {
 		c.Writer.WriteHeader(http.StatusBadRequest)
 		return
