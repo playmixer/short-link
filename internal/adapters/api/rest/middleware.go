@@ -2,6 +2,7 @@ package rest
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -58,6 +59,30 @@ func (s *Server) GzipCompress() gin.HandlerFunc {
 				}
 			}()
 		}
+		c.Next()
+	}
+}
+
+func (s *Server) Authenticate() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var ok bool
+		userID, err := c.Request.Cookie("user_id")
+		if err == nil {
+			_, ok = s.verifyCookie(userID.Value)
+		}
+		if err != nil || !ok {
+			c.Writer.WriteHeader(http.StatusUnauthorized)
+			c.Abort()
+
+			uniqueID := strconv.Itoa(time.Now().Nanosecond())
+			signedCookie := s.SignCookie(uniqueID)
+			http.SetCookie(c.Writer, &http.Cookie{
+				Name:  "user_id",
+				Value: signedCookie,
+				Path:  "/",
+			})
+		}
+
 		c.Next()
 	}
 }

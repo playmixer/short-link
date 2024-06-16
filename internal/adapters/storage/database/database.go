@@ -21,13 +21,14 @@ type Store struct {
 
 func initTables(ctx context.Context, db *pgxpool.Pool) error {
 	exec := `CREATE TABLE IF NOT EXISTS public.short_link (
-		id int GENERATED ALWAYS AS IDENTITY NOT NULL,
-		original_url varchar NOT NULL,
-		short_url varchar NOT NULL,
-		CONSTRAINT short_url_pk PRIMARY KEY (short_url)
-	);
-	CREATE UNIQUE INDEX IF NOT EXISTS short_link_original_url_idx ON public.short_link USING btree (original_url);
-	CREATE UNIQUE INDEX IF NOT EXISTS short_link_short_url_idx ON public.short_link USING btree (short_url);`
+	id int4 GENERATED ALWAYS AS IDENTITY NOT NULL,
+	original_url varchar NOT NULL,
+	short_url varchar NOT NULL,
+	user_id varchar NOT NULL,
+	CONSTRAINT short_url_pk PRIMARY KEY (short_url)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS short_link_original_url_idx ON public.short_link (original_url,user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS short_link_short_url_idx ON public.short_link (short_url,user_id);`
 
 	_, err := db.Exec(ctx, exec)
 	if err != nil {
@@ -58,12 +59,16 @@ func New(ctx context.Context, cfg *Config) (*Store, error) {
 	return s, nil
 }
 
-func (s *Store) Set(ctx context.Context, short, original string) (output string, err error) {
-	_, err = s.pool.Exec(ctx, "insert into short_link (short_url, original_url) values ($1, $2)", short, original)
+func (s *Store) Set(ctx context.Context, userID, short, original string) (output string, err error) {
+	_, err = s.pool.Exec(
+		ctx,
+		"insert into short_link (short_url, original_url, user_id) values ($1, $2, $3)",
+		short, original, userID,
+	)
 	var sqlError *pgconn.PgError
 	if err != nil {
 		if errors.As(err, &sqlError) && pgerrcode.UniqueViolation == sqlError.Code {
-			output, err = s.getByOriginal(ctx, original)
+			output, err = s.getByOriginal(ctx, userID, original)
 			if err != nil {
 				return output, fmt.Errorf("failed select URL %s %w %w", original, err, storeerror.ErrDuplicateShortURL)
 			}
@@ -74,8 +79,11 @@ func (s *Store) Set(ctx context.Context, short, original string) (output string,
 	return short, nil
 }
 
-func (s *Store) Get(ctx context.Context, key string) (string, error) {
-	row := s.pool.QueryRow(ctx, "select original_url from short_link where short_url =$1", key)
+func (s *Store) Get(ctx context.Context, userID, key string) (string, error) {
+	row := s.pool.QueryRow(ctx,
+		"select original_url from short_link where short_url =$1 and user_id = $2",
+		key, userID,
+	)
 	var value string
 	err := row.Scan(&value)
 	if err != nil {
@@ -84,15 +92,19 @@ func (s *Store) Get(ctx context.Context, key string) (string, error) {
 	return value, nil
 }
 
-func (s *Store) SetBatch(ctx context.Context, data []models.ShortLink) (output []models.ShortLink, reserr error) {
+func (s *Store) SetBatch(ctx context.Context, userID string, data []models.ShortLink) (
+	output []models.ShortLink,
+	reserr error,
+) {
 	output = make([]models.ShortLink, 0)
-	sqlString := "insert into short_link (short_url, original_url) values (@short, @original)"
+	sqlString := "insert into short_link (short_url, original_url, user_id) values (@short, @original, @user_id)"
 	batch := &pgx.Batch{}
 
 	for _, v := range data {
 		args := pgx.NamedArgs{
 			"short":    v.ShortURL,
 			"original": v.OriginalURL,
+			"user_id":  userID,
 		}
 		batch.Queue(sqlString, args)
 	}
@@ -111,9 +123,10 @@ func (s *Store) SetBatch(ctx context.Context, data []models.ShortLink) (output [
 			var pgErr *pgconn.PgError
 			if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
 				reserr = errors.Join(err, storeerror.ErrNotUnique)
-				v.ShortURL, err = s.getByOriginal(ctx, v.OriginalURL)
+				v.ShortURL, err = s.getByOriginal(ctx, userID, v.OriginalURL)
 				if err != nil {
-					return output, fmt.Errorf("failed select URL %s %w %w", v.OriginalURL, err, storeerror.ErrDuplicateShortURL)
+					return output, fmt.Errorf("failed select URL %s %w %w",
+						v.OriginalURL, err, storeerror.ErrDuplicateShortURL)
 				}
 				return []models.ShortLink{v}, fmt.Errorf("URL %s is not unique: %w", v.OriginalURL, reserr)
 			}
@@ -125,8 +138,11 @@ func (s *Store) SetBatch(ctx context.Context, data []models.ShortLink) (output [
 	return output, nil
 }
 
-func (s *Store) getByOriginal(ctx context.Context, original string) (string, error) {
-	row := s.pool.QueryRow(ctx, "select short_url from short_link where original_url =$1", original)
+func (s *Store) getByOriginal(ctx context.Context, userID, original string) (string, error) {
+	row := s.pool.QueryRow(ctx,
+		"select short_url from short_link where original_url =$1 and user_id = $2",
+		original, userID,
+	)
 	var value string
 	err := row.Scan(&value)
 	if err != nil {
@@ -142,4 +158,21 @@ func (s *Store) Ping(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (s *Store) GetAllURL(ctx context.Context, userID string) ([]models.ShortenURL, error) {
+	result := []models.ShortenURL{}
+	rows, err := s.pool.Query(ctx, "select short_url, original_url from short_link where user_id = $1", userID)
+	if err != nil {
+		return result, fmt.Errorf("failed selecting all URLs by user: %w", err)
+	}
+	for rows.Next() {
+		value := models.ShortenURL{}
+		err := rows.Scan(&value.ShortURL, &value.OriginalURL)
+		if err != nil {
+			return result, fmt.Errorf("failed scan url %w", err)
+		}
+		result = append(result, value)
+	}
+	return result, nil
 }

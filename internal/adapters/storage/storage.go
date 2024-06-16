@@ -19,9 +19,10 @@ type Config struct {
 }
 
 type Store interface {
-	Set(ctx context.Context, key, value string) (string, error)
-	Get(ctx context.Context, key string) (string, error)
-	SetBatch(ctx context.Context, batch []models.ShortLink) ([]models.ShortLink, error)
+	Get(ctx context.Context, userID, short string) (string, error)
+	GetAllURL(ctx context.Context, userID string) ([]models.ShortenURL, error)
+	Set(ctx context.Context, userID string, short string, url string) (string, error)
+	SetBatch(ctx context.Context, userID string, batch []models.ShortLink) ([]models.ShortLink, error)
 	Ping(ctx context.Context) error
 }
 

@@ -2,7 +2,11 @@ package rest
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/playmixer/short-link/internal/adapters/models"
@@ -13,29 +17,37 @@ const (
 	ContentLength   string = "Content-Length"
 	ContentType     string = "Content-Type"
 	ApplicationJSON string = "application/json"
+
+	CookieNameUserID string = "user_id"
 )
 
 type Shortner interface {
-	Shorty(ctx context.Context, link string) (string, error)
-	ShortyBatch(ctx context.Context, links []models.ShortenBatchRequest) ([]models.ShortenBatchResponse, error)
-	GetURL(ctx context.Context, short string) (string, error)
+	Shorty(ctx context.Context, userID, link string) (string, error)
+	ShortyBatch(ctx context.Context, userID string, links []models.ShortenBatchRequest) (
+		[]models.ShortenBatchResponse,
+		error,
+	)
+	GetURL(ctx context.Context, userID string, short string) (string, error)
+	GetAllURL(ctx context.Context, userID string) ([]models.ShortenURL, error)
 	PingStore(ctx context.Context) error
 }
 
 type Server struct {
-	log     *zap.Logger
-	addr    string
-	short   Shortner
-	baseURL string
+	log       *zap.Logger
+	addr      string
+	short     Shortner
+	baseURL   string
+	secretKey []byte
 }
 
 type Option func(s *Server)
 
 func New(short Shortner, options ...Option) *Server {
 	srv := &Server{
-		addr:  "localhost:8080",
-		short: short,
-		log:   zap.NewNop(),
+		addr:      "localhost:8080",
+		short:     short,
+		log:       zap.NewNop(),
+		secretKey: []byte("rest_secret_key"),
 	}
 
 	for _, opt := range options {
@@ -63,11 +75,18 @@ func Logger(log *zap.Logger) func(s *Server) {
 	}
 }
 
+func SecretKey(secret []byte) Option {
+	return func(s *Server) {
+		s.secretKey = secret
+	}
+}
+
 func (s *Server) SetupRouter() *gin.Engine {
 	r := gin.New()
 	r.Use(
 		s.Logger(),
 		s.GzipDecompress(),
+		s.Authenticate(),
 	)
 	r.POST("/", s.handlerMain)
 	r.GET("/:id", s.handlerShort)
@@ -78,6 +97,7 @@ func (s *Server) SetupRouter() *gin.Engine {
 	{
 		api.POST("/shorten", s.handlerAPIShorten)
 		api.POST("/shorten/batch", s.handlerAPIShortenBatch)
+		api.GET("/user/urls", s.handlerAPIGetUserURLs)
 	}
 
 	return r
@@ -93,4 +113,23 @@ func (s *Server) Run() error {
 
 func (s *Server) baseLink(short string) string {
 	return fmt.Sprintf("%s/%s", s.baseURL, short)
+}
+
+func (s *Server) SignCookie(data string) string {
+	h := hmac.New(sha256.New, s.secretKey)
+	h.Write([]byte(data))
+	signature := base64.StdEncoding.EncodeToString(h.Sum(nil))
+	return fmt.Sprintf("%s.%s", data, signature)
+}
+
+func (s *Server) verifyCookie(signedData string) (string, bool) {
+	parts := strings.Split(signedData, ".")
+	cookieCountPart := 2
+	if len(parts) != cookieCountPart {
+		return "", false
+	}
+	data, signature := parts[0], parts[1]
+
+	expectedSignature := s.SignCookie(data)
+	return data, hmac.Equal([]byte(signature), []byte(strings.Split(expectedSignature, ".")[1]))
 }
