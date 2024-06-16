@@ -103,13 +103,13 @@ func (s *Server) SetupRouter() *gin.Engine {
 		}
 	}
 
-	userApi := r.Group("/api/user")
-	userApi.Use(
+	userAPI := r.Group("/api/user")
+	userAPI.Use(
 		s.GzipCompress(),
 		s.Auth(),
 	)
 	{
-		userApi.GET("/urls", s.handlerAPIGetUserURLs)
+		userAPI.GET("/urls", s.handlerAPIGetUserURLs)
 	}
 
 	return r
