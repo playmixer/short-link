@@ -41,7 +41,7 @@ func run() error {
 		return fmt.Errorf("failed initialize storage: %w", err)
 	}
 
-	short := shortner.New(store)
+	short := shortner.New(ctx, store, shortner.SetLogger(lgr))
 	srv := rest.New(
 		short,
 		rest.Addr(cfg.API.Rest.Addr),

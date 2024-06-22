@@ -4,26 +4,30 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"sync"
+	"time"
 
 	"github.com/playmixer/short-link/internal/adapters/models"
 	"github.com/playmixer/short-link/internal/adapters/storage/storeerror"
 )
 
-type storageURL struct {
-	userID      string
-	ShortURL    string
-	OriginalURL string
+type StoreItem struct {
+	ID          string `json:"id"`
+	UserID      string `json:"user_id"`
+	ShortURL    string `json:"short_url"`
+	OriginalURL string `json:"original_url"`
+	IsDeleted   bool   `json:"is_deleted"`
 }
 
 type Store struct {
 	mu   *sync.Mutex
-	data []storageURL
+	data []StoreItem
 }
 
 func New(cfg *Config) (*Store, error) {
 	return &Store{
-		data: make([]storageURL, 0),
+		data: make([]StoreItem, 0),
 		mu:   &sync.Mutex{},
 	}, nil
 }
@@ -32,16 +36,17 @@ func (s *Store) Set(ctx context.Context, userID, shortURL, originalURL string) (
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for _, v := range s.data {
-		if v.OriginalURL == originalURL && v.userID == userID {
+		if v.OriginalURL == originalURL && v.UserID == userID {
 			return v.ShortURL, storeerror.ErrNotUnique
 		}
-		if v.ShortURL == shortURL && v.userID == userID {
+		if v.ShortURL == shortURL && v.UserID == userID {
 			return v.ShortURL, storeerror.ErrDuplicateShortURL
 		}
 	}
 
-	s.data = append(s.data, storageURL{
-		userID:      userID,
+	s.data = append(s.data, StoreItem{
+		ID:          strconv.Itoa(time.Now().Nanosecond()),
+		UserID:      userID,
 		ShortURL:    shortURL,
 		OriginalURL: originalURL,
 	})
@@ -53,7 +58,7 @@ func (s *Store) GetByUser(ctx context.Context, userID, shortURL string) (string,
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for _, v := range s.data {
-		if v.ShortURL == shortURL && v.userID == userID {
+		if v.ShortURL == shortURL && v.UserID == userID {
 			return v.OriginalURL, nil
 		}
 	}
@@ -65,6 +70,9 @@ func (s *Store) Get(ctx context.Context, shortURL string) (string, error) {
 	defer s.mu.Unlock()
 	for _, v := range s.data {
 		if v.ShortURL == shortURL {
+			if v.IsDeleted {
+				return v.OriginalURL, storeerror.ErrShortURLDeleted
+			}
 			return v.OriginalURL, nil
 		}
 	}
@@ -89,7 +97,7 @@ func (s *Store) SetBatch(ctx context.Context, userID string, batch []models.Shor
 		if err != nil {
 			if !errors.Is(err, storeerror.ErrDuplicateShortURL) {
 				for _, a := range shortAppled {
-					s.DeleteShortURL(ctx, userID, a)
+					s.RemoveShortURL(ctx, userID, a)
 				}
 			}
 			return []models.ShortLink{}, fmt.Errorf("set link `%s` failed: %w", req.OriginalURL, err)
@@ -104,19 +112,19 @@ func (s *Store) GetByOriginal(ctx context.Context, userID, originalURL string) (
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for _, v := range s.data {
-		if v.OriginalURL == originalURL && v.userID == userID {
+		if v.OriginalURL == originalURL && v.UserID == userID {
 			return v.ShortURL, nil
 		}
 	}
 	return "", fmt.Errorf("not found short by original URL: %s", originalURL)
 }
 
-func (s *Store) DeleteShortURL(ctx context.Context, userID, short string) {
+func (s *Store) RemoveShortURL(ctx context.Context, userID, short string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	newStorage := []storageURL{}
+	newStorage := []StoreItem{}
 	for _, v := range s.data {
-		if !(v.ShortURL == short && v.userID == userID) {
+		if !(v.ShortURL == short && v.UserID == userID) {
 			newStorage = append(newStorage, v)
 		}
 	}
@@ -130,9 +138,28 @@ func (s *Store) Ping(ctx context.Context) error {
 func (s *Store) GetAllURL(ctx context.Context, userID string) ([]models.ShortenURL, error) {
 	result := []models.ShortenURL{}
 	for _, v := range s.data {
-		if v.userID == userID {
+		if v.UserID == userID {
 			result = append(result, models.ShortenURL{ShortURL: v.ShortURL, OriginalURL: v.OriginalURL})
 		}
 	}
 	return result, nil
+}
+
+func (s *Store) GetAll() []StoreItem {
+	return s.data
+}
+
+func (s *Store) DeleteShortURLs(ctx context.Context, shorts []models.ShortLink) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for _, short := range shorts {
+		for i, v := range s.data {
+			if v.ShortURL == short.ShortURL && v.UserID == short.UserID {
+				s.data[i].IsDeleted = true
+				break
+			}
+		}
+	}
+	return nil
 }

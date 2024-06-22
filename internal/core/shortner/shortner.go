@@ -5,15 +5,18 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"time"
 
 	"github.com/playmixer/short-link/internal/adapters/models"
 	"github.com/playmixer/short-link/internal/adapters/storage/storeerror"
 	"github.com/playmixer/short-link/pkg/util"
+	"go.uber.org/zap"
 )
 
 var (
 	LengthShortLink         uint = 6
 	NumberOfTryGenShortLink      = 3
+	SizeDeleteChanel             = 1024
 )
 
 type Store interface {
@@ -22,22 +25,35 @@ type Store interface {
 	Set(ctx context.Context, userID string, short string, url string) (string, error)
 	SetBatch(ctx context.Context, userID string, batch []models.ShortLink) ([]models.ShortLink, error)
 	Ping(ctx context.Context) error
+	DeleteShortURLs(ctx context.Context, shorts []models.ShortLink) error
 }
 
 type Shortner struct {
-	store Store
+	store    Store
+	deleteCh chan models.ShortLink
+	log      *zap.Logger
 }
 
 type Option func(*Shortner)
 
-func New(s Store, options ...Option) *Shortner {
+func SetLogger(log *zap.Logger) Option {
+	return func(s *Shortner) {
+		s.log = log
+	}
+}
+
+func New(ctx context.Context, s Store, options ...Option) *Shortner {
 	sh := &Shortner{
-		store: s,
+		store:    s,
+		deleteCh: make(chan models.ShortLink, SizeDeleteChanel),
+		log:      zap.NewNop(),
 	}
 
 	for _, opt := range options {
 		opt(sh)
 	}
+
+	go sh.workerDeleteingShorts(ctx)
 
 	return sh
 }
@@ -121,4 +137,39 @@ func (s *Shortner) GetAllURL(ctx context.Context, userID string) ([]models.Short
 		return data, fmt.Errorf("failed get all URLs: %w", err)
 	}
 	return data, nil
+}
+
+func (s *Shortner) DeleteShortURLs(ctx context.Context, shorts []models.ShortLink) error {
+	for _, short := range shorts {
+		s.deleteCh <- short
+	}
+
+	return nil
+}
+
+func (s *Shortner) workerDeleteingShorts(ctx context.Context) {
+	s.log.Debug("start delete short proccessor")
+	var arrShort []models.ShortLink
+	tick := time.NewTicker(time.Second * 1)
+
+	for {
+		select {
+		case <-ctx.Done():
+			s.log.Debug("ended worker `workerDeleteingShorts`")
+			return
+		case m := <-s.deleteCh:
+			arrShort = append(arrShort, m)
+		case <-tick.C:
+			if len(arrShort) == 0 {
+				continue
+			}
+			err := s.store.DeleteShortURLs(ctx, arrShort)
+			if err != nil {
+				s.log.Error("failed delete short URLs", zap.Error(err))
+				continue
+			}
+			s.log.Debug("deleted short URLs")
+			arrShort = nil
+		}
+	}
 }

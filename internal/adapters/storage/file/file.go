@@ -16,13 +16,6 @@ import (
 	"github.com/playmixer/short-link/internal/adapters/storage/storeerror"
 )
 
-type storeItem struct {
-	ID          string `json:"id"`
-	UserID      string `json:"user_id"`
-	ShortURL    string `json:"short_url"`
-	OriginalURL string `json:"original_url"`
-}
-
 type Store struct {
 	*memory.Store
 	filepath string
@@ -63,14 +56,14 @@ func New(cfg *Config) (*Store, error) {
 
 		scanner := bufio.NewScanner(f)
 		for scanner.Scan() {
-			var item storeItem
+			var item memory.StoreItem
 			err := json.Unmarshal(scanner.Bytes(), &item)
 			if err != nil {
 				return nil, fmt.Errorf("failed unmarshal data from storage: %w", err)
 			}
 			_, err = s.Store.Set(context.Background(), item.UserID, item.ShortURL, item.OriginalURL)
 			if err != nil {
-				return nil, fmt.Errorf("failed set: %w", err)
+				return nil, fmt.Errorf("failed set (%s, %s, %s): %w", item.UserID, item.ShortURL, item.OriginalURL, err)
 			}
 		}
 
@@ -91,23 +84,24 @@ func (s *Store) Set(ctx context.Context, userID, key, value string) (string, err
 	if s.filepath != "" {
 		f, err := os.OpenFile(s.filepath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, os.ModePerm)
 		if err != nil {
-			s.Store.DeleteShortURL(ctx, userID, shortURL)
+			s.Store.RemoveShortURL(ctx, userID, shortURL)
 			return "", fmt.Errorf("failed open file: %w", err)
 		}
-		item := storeItem{
+		item := memory.StoreItem{
 			ID:          strconv.Itoa(time.Now().UTC().Nanosecond()),
 			UserID:      userID,
 			ShortURL:    shortURL,
 			OriginalURL: value,
+			IsDeleted:   false,
 		}
 		b, err := json.Marshal(item)
 		if err != nil {
-			s.Store.DeleteShortURL(ctx, userID, shortURL)
+			s.Store.RemoveShortURL(ctx, userID, shortURL)
 			return "", fmt.Errorf("failed marshal storage item: %w", err)
 		}
 		_, err = f.WriteString(string(b) + "\n")
 		if err != nil {
-			s.Store.DeleteShortURL(ctx, userID, shortURL)
+			s.Store.RemoveShortURL(ctx, userID, shortURL)
 			return "", fmt.Errorf("failed write to file storage: %w", err)
 		}
 	}
@@ -136,4 +130,43 @@ func (s *Store) SetBatch(ctx context.Context, userID string, batch []models.Shor
 		output = append(output, req)
 	}
 	return output, nil
+}
+
+func (s *Store) DeleteShortURLs(ctx context.Context, shorts []models.ShortLink) error {
+	err := s.Store.DeleteShortURLs(ctx, shorts)
+	if err != nil {
+		return fmt.Errorf("failed deleting shorts: %w", err)
+	}
+	err = s.reWriteStore()
+	if err != nil {
+		return fmt.Errorf("failed rewrite storage in file: %w", err)
+	}
+
+	return nil
+}
+
+func (s *Store) reWriteStore() error {
+	f, err := os.OpenFile(s.filepath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.ModePerm)
+	if err != nil {
+		return fmt.Errorf("failed opend file: %w", err)
+	}
+	for _, v := range s.GetAll() {
+		item := memory.StoreItem{
+			ID:          v.ID,
+			UserID:      v.UserID,
+			ShortURL:    v.ShortURL,
+			OriginalURL: v.OriginalURL,
+			IsDeleted:   v.IsDeleted,
+		}
+		line, err := json.Marshal(item)
+		if err != nil {
+			return fmt.Errorf("failed marshal data: %w", err)
+		}
+		_, err = f.WriteString(string(line) + "\n")
+		if err != nil {
+			return fmt.Errorf("failed write to file: %w", err)
+		}
+	}
+
+	return nil
 }

@@ -25,6 +25,7 @@ func initTables(ctx context.Context, db *pgxpool.Pool) error {
 	original_url varchar NOT NULL,
 	short_url varchar NOT NULL,
 	user_id varchar NOT NULL,
+	is_deleted bool DEFAULT false NOT NULL,
 	CONSTRAINT short_url_pk PRIMARY KEY (short_url)
 );
 CREATE UNIQUE INDEX IF NOT EXISTS short_link_original_url_idx ON public.short_link (original_url,user_id);
@@ -81,13 +82,17 @@ func (s *Store) Set(ctx context.Context, userID, short, original string) (output
 
 func (s *Store) Get(ctx context.Context, short string) (string, error) {
 	row := s.pool.QueryRow(ctx,
-		"select original_url from short_link where short_url = $1",
+		"select original_url, is_deleted from short_link where short_url = $1",
 		short,
 	)
 	var value string
-	err := row.Scan(&value)
+	var isDeleted bool
+	err := row.Scan(&value, &isDeleted)
 	if err != nil {
 		return "", fmt.Errorf("failed scan url %w", err)
+	}
+	if isDeleted {
+		return short, storeerror.ErrShortURLDeleted
 	}
 	return value, nil
 }
@@ -175,4 +180,34 @@ func (s *Store) GetAllURL(ctx context.Context, userID string) ([]models.ShortenU
 		result = append(result, value)
 	}
 	return result, nil
+}
+
+func (s *Store) DeleteShortURLs(ctx context.Context, shorts []models.ShortLink) error {
+	sqlString := `update short_link set is_deleted = true 
+where user_id = @user_id and short_url = @short_url and is_deleted = false`
+	batch := &pgx.Batch{}
+
+	for _, v := range shorts {
+		args := pgx.NamedArgs{
+			"short_url": v.ShortURL,
+			"user_id":   v.UserID,
+		}
+		batch.Queue(sqlString, args)
+	}
+
+	result := s.pool.SendBatch(ctx, batch)
+	defer func() {
+		err := result.Close()
+		if err != nil {
+			s.log.Debug("error closing result batch", zap.Error(err))
+		}
+	}()
+
+	for _, v := range shorts {
+		_, err := result.Exec()
+		if err != nil {
+			return fmt.Errorf("failed deleting short url `%s`: %w", v.ShortURL, err)
+		}
+	}
+	return nil
 }

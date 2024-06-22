@@ -117,7 +117,7 @@ func Test_mainHandle(t *testing.T) {
 		t.Errorf("failed initialize storage: %v", err)
 		return
 	}
-	s := shortner.New(store)
+	s := shortner.New(context.Background(), store)
 	srv := rest.New(s, rest.Addr(cfg.API.Rest.Addr), rest.BaseURL(cfg.BaseURL))
 	router := srv.SetupRouter()
 
@@ -183,7 +183,7 @@ func Test_shortHandle(t *testing.T) {
 		t.Errorf("failed initialize storage: %v", err)
 		return
 	}
-	s := shortner.New(store)
+	s := shortner.New(context.Background(), store)
 	srv := rest.New(s, rest.Addr(cfg.API.Rest.Addr), rest.BaseURL(cfg.BaseURL))
 	router := srv.SetupRouter()
 
@@ -287,7 +287,7 @@ func Test_apiShorten(t *testing.T) {
 		t.Errorf("failed initialize storage: %v", err)
 		return
 	}
-	s := shortner.New(store)
+	s := shortner.New(context.Background(), store)
 	srv := rest.New(s, rest.Addr(cfg.API.Rest.Addr), rest.BaseURL(cfg.BaseURL))
 	router := srv.SetupRouter()
 
@@ -365,7 +365,7 @@ func Test_Gzip(t *testing.T) {
 		t.Errorf("failed initialize storage: %v", err)
 		return
 	}
-	s := shortner.New(store)
+	s := shortner.New(context.Background(), store)
 	srv := rest.New(s, rest.Addr(cfg.API.Rest.Addr), rest.BaseURL(cfg.BaseURL))
 	router := srv.SetupRouter()
 
@@ -454,7 +454,7 @@ func TestServer_handlerAPIGetUserURLs(t *testing.T) {
 		t.Errorf("failed initialize storage: %v", err)
 		return
 	}
-	s := shortner.New(store)
+	s := shortner.New(context.Background(), store)
 	srv := rest.New(s, rest.Addr(cfg.API.Rest.Addr), rest.BaseURL(cfg.BaseURL))
 	router := srv.SetupRouter()
 	for _, tt := range tests {

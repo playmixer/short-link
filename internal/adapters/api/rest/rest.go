@@ -30,6 +30,7 @@ type Shortner interface {
 	GetURL(ctx context.Context, short string) (string, error)
 	GetAllURL(ctx context.Context, userID string) ([]models.ShortenURL, error)
 	PingStore(ctx context.Context) error
+	DeleteShortURLs(ctx context.Context, shorts []models.ShortLink) error
 }
 
 type Server struct {
@@ -110,6 +111,7 @@ func (s *Server) SetupRouter() *gin.Engine {
 	)
 	{
 		userAPI.GET("/urls", s.handlerAPIGetUserURLs)
+		userAPI.DELETE("/urls", s.handlerAPIDeleteUserURLs)
 	}
 
 	return r

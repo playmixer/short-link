@@ -70,6 +70,10 @@ func (s *Server) handlerShort(c *gin.Context) {
 
 	link, err := s.short.GetURL(ctx, id)
 	if err != nil {
+		if errors.Is(err, storeerror.ErrShortURLDeleted) {
+			c.Writer.WriteHeader(http.StatusGone)
+			return
+		}
 		c.Writer.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -208,4 +212,40 @@ func (s *Server) handlerAPIGetUserURLs(c *gin.Context) {
 
 	c.Writer.Header().Add(ContentType, ApplicationJSON)
 	c.JSON(http.StatusOK, links)
+}
+
+func (s *Server) handlerAPIDeleteUserURLs(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	// считаем куки валидными т.к. проверили их в мидлваре
+	cookieUserID, _ := c.Request.Cookie(CookieNameUserID)
+	userID, _ := s.verifyCookie(cookieUserID.Value)
+
+	body, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		c.Writer.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	var jBody []string
+	err = json.Unmarshal(body, &jBody)
+	if err != nil {
+		s.log.Debug("invalid body", zap.Error(err))
+		c.Writer.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	data := []models.ShortLink{}
+	for _, short := range jBody {
+		data = append(data, models.ShortLink{UserID: userID, ShortURL: short})
+	}
+
+	err = s.short.DeleteShortURLs(ctx, data)
+	if err != nil {
+		s.log.Error("delete short url error", zap.Error(err))
+		c.Writer.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	c.Writer.WriteHeader(http.StatusAccepted)
 }
