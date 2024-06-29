@@ -19,28 +19,13 @@ type Store struct {
 	log  *zap.Logger
 }
 
-func initTables(ctx context.Context, db *pgxpool.Pool) error {
-	exec := `CREATE TABLE IF NOT EXISTS public.short_link (
-	id int4 GENERATED ALWAYS AS IDENTITY NOT NULL,
-	original_url varchar NOT NULL,
-	short_url varchar NOT NULL,
-	user_id varchar NOT NULL,
-	is_deleted bool DEFAULT false NOT NULL,
-	CONSTRAINT short_url_pk PRIMARY KEY (short_url)
-);
-CREATE UNIQUE INDEX IF NOT EXISTS short_link_original_url_idx ON public.short_link (original_url,user_id);
-CREATE UNIQUE INDEX IF NOT EXISTS short_link_short_url_idx ON public.short_link (short_url,user_id);`
-
-	_, err := db.Exec(ctx, exec)
-	if err != nil {
-		return fmt.Errorf("error initialize tables: %w", err)
-	}
-
-	return nil
-}
-
 func New(ctx context.Context, cfg *Config) (*Store, error) {
 	var err error
+
+	if err = runMigrations(cfg.DSN); err != nil {
+		return nil, fmt.Errorf("failed initialize tables: %w", err)
+	}
+
 	s := &Store{
 		log: cfg.log,
 	}
@@ -52,27 +37,27 @@ func New(ctx context.Context, cfg *Config) (*Store, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed open database: %w", err)
 	}
-	err = initTables(ctx, s.pool)
-	if err != nil {
-		return nil, fmt.Errorf("failed initialize tables: %w", err)
-	}
 
 	return s, nil
 }
 
 func (s *Store) Set(ctx context.Context, userID, short, original string) (output string, err error) {
+	output, err = s.getByOriginal(ctx, userID, original)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return output, fmt.Errorf("failed select URL %s %w", original, err)
+	}
+	if output != "" {
+		return output, fmt.Errorf("url `%s` is not unique: %w", original, storeerror.ErrNotUnique)
+	}
+
 	_, err = s.pool.Exec(
 		ctx,
 		"insert into short_link (short_url, original_url, user_id) values ($1, $2, $3)",
 		short, original, userID,
 	)
-	var sqlError *pgconn.PgError
 	if err != nil {
+		var sqlError *pgconn.PgError
 		if errors.As(err, &sqlError) && pgerrcode.UniqueViolation == sqlError.Code {
-			output, err = s.getByOriginal(ctx, userID, original)
-			if err != nil {
-				return output, fmt.Errorf("failed select URL %s %w %w", original, err, storeerror.ErrDuplicateShortURL)
-			}
 			return output, fmt.Errorf("pgerror: %w: %w", storeerror.ErrNotUnique, err)
 		}
 		return output, fmt.Errorf("failed setting short url: %w", err)
@@ -101,6 +86,20 @@ func (s *Store) SetBatch(ctx context.Context, userID string, data []models.Short
 	output []models.ShortLink,
 	reserr error,
 ) {
+	for _, d := range data {
+		short, err := s.getByOriginal(ctx, userID, d.OriginalURL)
+		if err != nil && errors.Is(err, pgx.ErrNoRows) {
+			continue
+		}
+		if err != nil {
+			return []models.ShortLink{}, fmt.Errorf("failed getting URL `%s`: %w", d.OriginalURL, err)
+		}
+		if short != "" {
+			return []models.ShortLink{{ShortURL: short, OriginalURL: d.OriginalURL}},
+				fmt.Errorf("URL `%s` is not unique: %w", d.OriginalURL, storeerror.ErrNotUnique)
+		}
+	}
+
 	output = make([]models.ShortLink, 0)
 	sqlString := "insert into short_link (short_url, original_url, user_id) values (@short, @original, @user_id)"
 	batch := &pgx.Batch{}
@@ -145,7 +144,7 @@ func (s *Store) SetBatch(ctx context.Context, userID string, data []models.Short
 
 func (s *Store) getByOriginal(ctx context.Context, userID, original string) (string, error) {
 	row := s.pool.QueryRow(ctx,
-		"select short_url from short_link where original_url =$1 and user_id = $2",
+		"select short_url from short_link where original_url =$1 and user_id = $2 and is_deleted = false",
 		original, userID,
 	)
 	var value string
@@ -167,7 +166,8 @@ func (s *Store) Ping(ctx context.Context) error {
 
 func (s *Store) GetAllURL(ctx context.Context, userID string) ([]models.ShortenURL, error) {
 	result := []models.ShortenURL{}
-	rows, err := s.pool.Query(ctx, "select short_url, original_url from short_link where user_id = $1", userID)
+	rows, err := s.pool.Query(ctx,
+		"select short_url, original_url from short_link where user_id = $1 and is_deleted = false", userID)
 	if err != nil {
 		return result, fmt.Errorf("failed selecting all URLs by user: %w", err)
 	}
@@ -208,6 +208,15 @@ where user_id = @user_id and short_url = @short_url and is_deleted = false`
 		if err != nil {
 			return fmt.Errorf("failed deleting short url `%s`: %w", v.ShortURL, err)
 		}
+	}
+	return nil
+}
+
+func (s *Store) HardDeleteURLs(ctx context.Context) error {
+	sqlString := `delete from short_link where is_deleted = true`
+	_, err := s.pool.Exec(ctx, sqlString)
+	if err != nil {
+		return fmt.Errorf("failed hard deleting URLs: %w", err)
 	}
 	return nil
 }

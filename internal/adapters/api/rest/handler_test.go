@@ -127,9 +127,10 @@ func Test_mainHandle(t *testing.T) {
 			body := strings.NewReader(tt.want.Request)
 			r := httptest.NewRequest(http.MethodPost, "/", body)
 
-			signedCookie := srv.SignCookie("1")
+			signedCookie, err := srv.CreateJWT("1")
+			require.NoError(t, err)
 			r.AddCookie(&http.Cookie{
-				Name:  "user_id",
+				Name:  rest.CookieNameUserID,
 				Value: signedCookie,
 				Path:  "/",
 			})
@@ -192,9 +193,10 @@ func Test_shortHandle(t *testing.T) {
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest(http.MethodGet, "/QW23qq", http.NoBody)
 
-			signedCookie := srv.SignCookie("1")
+			signedCookie, err := srv.CreateJWT("1")
+			require.NoError(t, err)
 			r.AddCookie(&http.Cookie{
-				Name:  "user_id",
+				Name:  rest.CookieNameUserID,
 				Value: signedCookie,
 				Path:  "/",
 			})
@@ -301,9 +303,10 @@ func Test_apiShorten(t *testing.T) {
 			body := strings.NewReader(string(reqBody))
 			r := httptest.NewRequest(http.MethodPost, "/api/shorten", body)
 
-			signedCookie := srv.SignCookie("1")
+			signedCookie, err := srv.CreateJWT("1")
+			require.NoError(t, err)
 			r.AddCookie(&http.Cookie{
-				Name:  "user_id",
+				Name:  rest.CookieNameUserID,
 				Value: signedCookie,
 				Path:  "/",
 			})
@@ -385,9 +388,10 @@ func Test_Gzip(t *testing.T) {
 			r.Header.Add("Content-Encoding", "gzip")
 			r.Header.Add("Accept-Encoding", "gzip")
 
-			signedCookie := srv.SignCookie("1")
+			signedCookie, err := srv.CreateJWT("1")
+			require.NoError(t, err)
 			r.AddCookie(&http.Cookie{
-				Name:  "user_id",
+				Name:  rest.CookieNameUserID,
 				Value: signedCookie,
 				Path:  "/",
 			})
@@ -463,9 +467,10 @@ func TestServer_handlerAPIGetUserURLs(t *testing.T) {
 			r := httptest.NewRequest(http.MethodGet, "/api/user/urls", http.NoBody)
 			r.Header.Add("Accept-Encoding", "gzip")
 
-			signedCookie := srv.SignCookie("1")
+			signedCookie, err := srv.CreateJWT("1")
+			require.NoError(t, err)
 			r.AddCookie(&http.Cookie{
-				Name:  "user_id",
+				Name:  rest.CookieNameUserID,
 				Value: signedCookie,
 				Path:  "/",
 			})

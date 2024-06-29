@@ -69,14 +69,17 @@ func (s *Server) CheckCookies() gin.HandlerFunc {
 		var userCookie *http.Cookie
 		userCookie, err := c.Request.Cookie(CookieNameUserID)
 		if err == nil {
-			_, ok = s.verifyCookie(userCookie.Value)
+			_, ok = s.verifyJWT(userCookie.Value)
 		}
 		if err != nil || !ok {
-			// c.Writer.WriteHeader(http.StatusUnauthorized)
-			// c.Abort()
-
 			uniqueID := strconv.Itoa(time.Now().Nanosecond())
-			signedCookie := s.SignCookie(uniqueID)
+			signedCookie, err := s.CreateJWT(uniqueID)
+			if err != nil {
+				s.log.Info("failed sign cookies", zap.Error(err))
+				c.Writer.WriteHeader(http.StatusInternalServerError)
+				c.Abort()
+				return
+			}
 			userCookie = &http.Cookie{
 				Name:  CookieNameUserID,
 				Value: signedCookie,
@@ -92,12 +95,8 @@ func (s *Server) CheckCookies() gin.HandlerFunc {
 
 func (s *Server) Auth() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var ok bool
-		userID, err := c.Request.Cookie(CookieNameUserID)
-		if err == nil {
-			_, ok = s.verifyCookie(userID.Value)
-		}
-		if err != nil || !ok {
+		_, err := s.checkAuth(c)
+		if err != nil {
 			c.Writer.WriteHeader(http.StatusUnauthorized)
 			c.Abort()
 		}

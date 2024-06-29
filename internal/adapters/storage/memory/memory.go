@@ -163,3 +163,15 @@ func (s *Store) DeleteShortURLs(ctx context.Context, shorts []models.ShortLink) 
 	}
 	return nil
 }
+
+func (s *Store) HardDeleteURLs(ctx context.Context) error {
+	newData := make([]StoreItem, 0)
+	for _, v := range s.data {
+		if !v.IsDeleted {
+			newData = append(newData, v)
+		}
+	}
+	s.data = newData
+
+	return nil
+}

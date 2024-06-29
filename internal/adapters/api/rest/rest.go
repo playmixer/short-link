@@ -2,13 +2,11 @@ package rest
 
 import (
 	"context"
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/base64"
+	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/playmixer/short-link/internal/adapters/models"
 	"go.uber.org/zap"
 )
@@ -18,7 +16,11 @@ const (
 	ContentType     string = "Content-Type"
 	ApplicationJSON string = "application/json"
 
-	CookieNameUserID string = "user_id"
+	CookieNameUserID string = "token"
+)
+
+var (
+	errInvalidAuthCookie = errors.New("invalid authorization cookie")
 )
 
 type Shortner interface {
@@ -129,21 +131,54 @@ func (s *Server) baseLink(short string) string {
 	return fmt.Sprintf("%s/%s", s.baseURL, short)
 }
 
-func (s *Server) SignCookie(data string) string {
-	h := hmac.New(sha256.New, s.secretKey)
-	h.Write([]byte(data))
-	signature := base64.StdEncoding.EncodeToString(h.Sum(nil))
-	return fmt.Sprintf("%s.%s", data, signature)
+func (s *Server) CreateJWT(uniqueID string) (string, error) {
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"uniqueID": uniqueID,
+	})
+	tokenString, err := token.SignedString(s.secretKey)
+	if err != nil {
+		return "", fmt.Errorf("failed signe token: %w", err)
+	}
+
+	return tokenString, nil
 }
 
-func (s *Server) verifyCookie(signedData string) (string, bool) {
-	parts := strings.Split(signedData, ".")
-	cookieCountPart := 2
-	if len(parts) != cookieCountPart {
+func (s *Server) verifyJWT(signedData string) (string, bool) {
+	token, err := jwt.Parse(signedData, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unknown signing method: %v", token.Header["alg"])
+		}
+		return s.secretKey, nil
+	})
+
+	if err != nil {
+		s.log.Debug("failed parse jwt token", zap.Error(err))
 		return "", false
 	}
-	data, signature := parts[0], parts[1]
 
-	expectedSignature := s.SignCookie(data)
-	return data, hmac.Equal([]byte(signature), []byte(strings.Split(expectedSignature, ".")[1]))
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		if uniqueID, ok := claims["uniqueID"].(string); ok {
+			if uniqueID != "" {
+				return uniqueID, true
+			}
+		}
+	}
+
+	return "", false
+}
+
+func (s *Server) checkAuth(c *gin.Context) (userID string, err error) {
+	var ok bool
+	cookieUserID, err := c.Request.Cookie(CookieNameUserID)
+	if err == nil {
+		userID, ok = s.verifyJWT(cookieUserID.Value)
+	}
+	if err != nil {
+		return "", fmt.Errorf("failed reade user cookie: %w %w", errInvalidAuthCookie, err)
+	}
+	if !ok {
+		return "", fmt.Errorf("unverify usercookie: %w", errInvalidAuthCookie)
+	}
+
+	return userID, nil
 }

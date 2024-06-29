@@ -25,6 +25,7 @@ type Store interface {
 	SetBatch(ctx context.Context, userID string, batch []models.ShortLink) ([]models.ShortLink, error)
 	Ping(ctx context.Context) error
 	DeleteShortURLs(ctx context.Context, shorts []models.ShortLink) error
+	HardDeleteURLs(ctx context.Context) error
 }
 
 func NewStore(ctx context.Context, cfg *Config, log *zap.Logger) (Store, error) {

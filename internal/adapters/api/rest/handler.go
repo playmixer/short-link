@@ -40,8 +40,11 @@ func (s *Server) handlerMain(c *gin.Context) {
 		return
 	}
 
-	cookieUserID, _ := c.Request.Cookie(CookieNameUserID)
-	userID, _ := s.verifyCookie(cookieUserID.Value)
+	userID, err := s.checkAuth(c)
+	if err != nil {
+		c.Writer.WriteHeader(http.StatusUnauthorized)
+		return
+	}
 
 	sLink, err := s.short.Shorty(ctx, userID, link)
 	if err != nil {
@@ -108,8 +111,11 @@ func (s *Server) handlerAPIShorten(c *gin.Context) {
 		return
 	}
 
-	cookieUserID, _ := c.Request.Cookie(CookieNameUserID)
-	userID, _ := s.verifyCookie(cookieUserID.Value)
+	userID, err := s.checkAuth(c)
+	if err != nil {
+		c.Writer.WriteHeader(http.StatusUnauthorized)
+		return
+	}
 
 	sLink, err := s.short.Shorty(ctx, userID, req.URL)
 	if err != nil {
@@ -166,8 +172,11 @@ func (s *Server) handlerAPIShortenBatch(c *gin.Context) {
 		}
 	}
 
-	cookieUserID, _ := c.Request.Cookie(CookieNameUserID)
-	userID, _ := s.verifyCookie(cookieUserID.Value)
+	userID, err := s.checkAuth(c)
+	if err != nil {
+		c.Writer.WriteHeader(http.StatusUnauthorized)
+		return
+	}
 
 	sLink, err := s.short.ShortyBatch(ctx, userID, req)
 	for i, v := range sLink {
@@ -191,9 +200,11 @@ func (s *Server) handlerAPIShortenBatch(c *gin.Context) {
 func (s *Server) handlerAPIGetUserURLs(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	// считаем куки валидными т.к. проверили их в мидлваре
-	cookieUserID, _ := c.Request.Cookie(CookieNameUserID)
-	userID, _ := s.verifyCookie(cookieUserID.Value)
+	userID, err := s.checkAuth(c)
+	if err != nil {
+		c.Writer.WriteHeader(http.StatusUnauthorized)
+		return
+	}
 
 	links, err := s.short.GetAllURL(ctx, userID)
 	if err != nil {
@@ -217,13 +228,16 @@ func (s *Server) handlerAPIGetUserURLs(c *gin.Context) {
 func (s *Server) handlerAPIDeleteUserURLs(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	// считаем куки валидными т.к. проверили их в мидлваре
-	cookieUserID, _ := c.Request.Cookie(CookieNameUserID)
-	userID, _ := s.verifyCookie(cookieUserID.Value)
+	userID, err := s.checkAuth(c)
+	if err != nil {
+		c.Writer.WriteHeader(http.StatusUnauthorized)
+		return
+	}
 
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		c.Writer.WriteHeader(http.StatusBadRequest)
+		s.log.Error("failed read body from request", zap.Error(err))
+		c.Writer.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 

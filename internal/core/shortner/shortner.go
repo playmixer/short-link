@@ -17,6 +17,7 @@ var (
 	LengthShortLink         uint = 6
 	NumberOfTryGenShortLink      = 3
 	SizeDeleteChanel             = 1024
+	HardDeletingDelay            = time.Second * 10
 )
 
 type Store interface {
@@ -26,6 +27,7 @@ type Store interface {
 	SetBatch(ctx context.Context, userID string, batch []models.ShortLink) ([]models.ShortLink, error)
 	Ping(ctx context.Context) error
 	DeleteShortURLs(ctx context.Context, shorts []models.ShortLink) error
+	HardDeleteURLs(ctx context.Context) error
 }
 
 type Shortner struct {
@@ -140,36 +142,28 @@ func (s *Shortner) GetAllURL(ctx context.Context, userID string) ([]models.Short
 }
 
 func (s *Shortner) DeleteShortURLs(ctx context.Context, shorts []models.ShortLink) error {
-	for _, short := range shorts {
-		s.deleteCh <- short
+	err := s.store.DeleteShortURLs(ctx, shorts)
+	if err != nil {
+		return fmt.Errorf("failed delete short URLs: %w", err)
 	}
-
 	return nil
 }
 
 func (s *Shortner) workerDeleteingShorts(ctx context.Context) {
 	s.log.Debug("start delete short proccessor")
-	var arrShort []models.ShortLink
-	tick := time.NewTicker(time.Second * 1)
+	tick := time.NewTicker(HardDeletingDelay)
 
 	for {
 		select {
 		case <-ctx.Done():
 			s.log.Debug("ended worker `workerDeleteingShorts`")
 			return
-		case m := <-s.deleteCh:
-			arrShort = append(arrShort, m)
 		case <-tick.C:
-			if len(arrShort) == 0 {
-				continue
-			}
-			err := s.store.DeleteShortURLs(ctx, arrShort)
+			err := s.store.HardDeleteURLs(ctx)
 			if err != nil {
 				s.log.Error("failed delete short URLs", zap.Error(err))
 				continue
 			}
-			s.log.Debug("deleted short URLs")
-			arrShort = nil
 		}
 	}
 }
