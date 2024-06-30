@@ -14,10 +14,10 @@ import (
 )
 
 var (
-	LengthShortLink         uint = 6
-	NumberOfTryGenShortLink      = 3
-	SizeDeleteChanel             = 1024
-	HardDeletingDelay            = time.Second * 10
+	lengthShortLink         uint = 6
+	numberOfTryGenShortLink      = 3
+	sizeDeleteChanel             = 1024
+	hardDeletingDelay            = time.Second * 10
 )
 
 type Store interface {
@@ -47,7 +47,7 @@ func SetLogger(log *zap.Logger) Option {
 func New(ctx context.Context, s Store, options ...Option) *Shortner {
 	sh := &Shortner{
 		store:    s,
-		deleteCh: make(chan models.ShortLink, SizeDeleteChanel),
+		deleteCh: make(chan models.ShortLink, sizeDeleteChanel),
 		log:      zap.NewNop(),
 	}
 
@@ -67,7 +67,7 @@ func (s *Shortner) Shorty(ctx context.Context, userID, link string) (sLink strin
 
 	var i int
 	for {
-		sLink = util.RandomString(LengthShortLink)
+		sLink = util.RandomString(lengthShortLink)
 		sLink, err = s.store.Set(ctx, userID, sLink, link)
 		if err != nil && !errors.Is(err, storeerror.ErrDuplicateShortURL) {
 			return sLink, fmt.Errorf("failed setting URL %s: %w", link, err)
@@ -76,7 +76,7 @@ func (s *Shortner) Shorty(ctx context.Context, userID, link string) (sLink strin
 			return sLink, nil
 		}
 		i++
-		if i >= NumberOfTryGenShortLink {
+		if i >= numberOfTryGenShortLink {
 			break
 		}
 	}
@@ -98,7 +98,7 @@ func (s *Shortner) ShortyBatch(ctx context.Context, userID string, batch []model
 ) {
 	payload := make([]models.ShortLink, 0, len(batch))
 	for _, batchRequest := range batch {
-		short := util.RandomString(LengthShortLink)
+		short := util.RandomString(lengthShortLink)
 		payload = append(payload, models.ShortLink{
 			ShortURL:    short,
 			OriginalURL: batchRequest.OriginalURL,
@@ -151,7 +151,7 @@ func (s *Shortner) DeleteShortURLs(ctx context.Context, shorts []models.ShortLin
 
 func (s *Shortner) workerDeleteingShorts(ctx context.Context) {
 	s.log.Debug("start delete short proccessor")
-	tick := time.NewTicker(HardDeletingDelay)
+	tick := time.NewTicker(hardDeletingDelay)
 
 	for {
 		select {

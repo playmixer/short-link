@@ -42,7 +42,12 @@ func New(ctx context.Context, cfg *Config) (*Store, error) {
 }
 
 func (s *Store) Set(ctx context.Context, userID, short, original string) (output string, err error) {
-	output, err = s.getByOriginal(ctx, userID, original)
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed begin transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	output, err = s.getByOriginal(ctx, tx, userID, original)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return output, fmt.Errorf("failed select URL %s %w", original, err)
 	}
@@ -50,7 +55,7 @@ func (s *Store) Set(ctx context.Context, userID, short, original string) (output
 		return output, fmt.Errorf("url `%s` is not unique: %w", original, storeerror.ErrNotUnique)
 	}
 
-	_, err = s.pool.Exec(
+	_, err = tx.Exec(
 		ctx,
 		"insert into short_link (short_url, original_url, user_id) values ($1, $2, $3)",
 		short, original, userID,
@@ -61,6 +66,10 @@ func (s *Store) Set(ctx context.Context, userID, short, original string) (output
 			return output, fmt.Errorf("pgerror: %w: %w", storeerror.ErrNotUnique, err)
 		}
 		return output, fmt.Errorf("failed setting short url: %w", err)
+	}
+	err = tx.Commit(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed committing transaction: %w", err)
 	}
 	return short, nil
 }
@@ -86,8 +95,13 @@ func (s *Store) SetBatch(ctx context.Context, userID string, data []models.Short
 	output []models.ShortLink,
 	reserr error,
 ) {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return []models.ShortLink{}, fmt.Errorf("failed begin transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
 	for _, d := range data {
-		short, err := s.getByOriginal(ctx, userID, d.OriginalURL)
+		short, err := s.getByOriginal(ctx, tx, userID, d.OriginalURL)
 		if err != nil && errors.Is(err, pgx.ErrNoRows) {
 			continue
 		}
@@ -113,37 +127,27 @@ func (s *Store) SetBatch(ctx context.Context, userID string, data []models.Short
 		batch.Queue(sqlString, args)
 	}
 
-	result := s.pool.SendBatch(ctx, batch)
-	defer func() {
-		err := result.Close()
-		if err != nil {
-			s.log.Debug("error closing result batch", zap.Error(err))
-		}
-	}()
-
+	result := tx.SendBatch(ctx, batch)
 	for _, v := range data {
 		_, err := result.Exec()
 		if err != nil {
-			var pgErr *pgconn.PgError
-			if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
-				reserr = errors.Join(err, storeerror.ErrNotUnique)
-				v.ShortURL, err = s.getByOriginal(ctx, userID, v.OriginalURL)
-				if err != nil {
-					return output, fmt.Errorf("failed select URL %s %w %w",
-						v.OriginalURL, err, storeerror.ErrDuplicateShortURL)
-				}
-				return []models.ShortLink{v}, fmt.Errorf("URL %s is not unique: %w", v.OriginalURL, reserr)
-			}
 			return []models.ShortLink{}, fmt.Errorf("failed insert URL %s: %w", v.OriginalURL, err)
 		}
 		output = append(output, v)
 	}
-
+	err = result.Close()
+	if err != nil {
+		return []models.ShortLink{}, fmt.Errorf("failed closing result batch: %w", err)
+	}
+	err = tx.Commit(ctx)
+	if err != nil {
+		return []models.ShortLink{}, fmt.Errorf("failed commit transaction: %w", err)
+	}
 	return output, nil
 }
 
-func (s *Store) getByOriginal(ctx context.Context, userID, original string) (string, error) {
-	row := s.pool.QueryRow(ctx,
+func (s *Store) getByOriginal(ctx context.Context, tx pgx.Tx, userID, original string) (string, error) {
+	row := tx.QueryRow(ctx,
 		"select short_url from short_link where original_url =$1 and user_id = $2 and is_deleted = false",
 		original, userID,
 	)
