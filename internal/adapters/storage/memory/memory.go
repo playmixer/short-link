@@ -4,90 +4,174 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"sync"
+	"time"
 
 	"github.com/playmixer/short-link/internal/adapters/models"
 	"github.com/playmixer/short-link/internal/adapters/storage/storeerror"
 )
 
+type StoreItem struct {
+	ID          string `json:"id"`
+	UserID      string `json:"user_id"`
+	ShortURL    string `json:"short_url"`
+	OriginalURL string `json:"original_url"`
+	IsDeleted   bool   `json:"is_deleted"`
+}
+
 type Store struct {
-	data map[string]string
 	mu   *sync.Mutex
+	data []StoreItem
 }
 
 func New(cfg *Config) (*Store, error) {
 	return &Store{
-		data: make(map[string]string),
+		data: make([]StoreItem, 0),
 		mu:   &sync.Mutex{},
 	}, nil
 }
 
-func (s *Store) Set(ctx context.Context, key, value string) (string, error) {
+func (s *Store) Set(ctx context.Context, userID, shortURL, originalURL string) (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	for k, v := range s.data {
-		if v == value {
-			return k, storeerror.ErrNotUnique
+	for _, v := range s.data {
+		if v.OriginalURL == originalURL && v.UserID == userID {
+			return v.ShortURL, storeerror.ErrNotUnique
+		}
+		if v.ShortURL == shortURL && v.UserID == userID {
+			return v.ShortURL, storeerror.ErrDuplicateShortURL
 		}
 	}
-	if _, ok := s.data[key]; ok {
-		return key, storeerror.ErrDuplicateShortURL
-	}
-	s.data[key] = value
-	return key, nil
+
+	s.data = append(s.data, StoreItem{
+		ID:          strconv.Itoa(time.Now().Nanosecond()),
+		UserID:      userID,
+		ShortURL:    shortURL,
+		OriginalURL: originalURL,
+	})
+
+	return shortURL, nil
 }
 
-func (s *Store) Get(ctx context.Context, key string) (string, error) {
+func (s *Store) GetByUser(ctx context.Context, userID, shortURL string) (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if _, ok := s.data[key]; ok {
-		return s.data[key], nil
+	for _, v := range s.data {
+		if v.ShortURL == shortURL && v.UserID == userID {
+			return v.OriginalURL, nil
+		}
 	}
 	return "", storeerror.ErrNotFoundKey
 }
 
-func (s *Store) SetBatch(ctx context.Context, batch []models.ShortLink) (output []models.ShortLink, err error) {
+func (s *Store) Get(ctx context.Context, shortURL string) (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, v := range s.data {
+		if v.ShortURL == shortURL {
+			if v.IsDeleted {
+				return v.OriginalURL, storeerror.ErrShortURLDeleted
+			}
+			return v.OriginalURL, nil
+		}
+	}
+	return "", storeerror.ErrNotFoundKey
+}
+
+func (s *Store) SetBatch(ctx context.Context, userID string, batch []models.ShortLink) (
+	output []models.ShortLink,
+	err error,
+) {
 	for _, b := range batch {
-		if _, err := s.Get(ctx, b.ShortURL); err == nil {
+		if _, err := s.GetByUser(ctx, userID, b.ShortURL); err == nil {
 			return []models.ShortLink{}, storeerror.ErrDuplicateShortURL
 		}
-		if shortURL, err := s.GetByOriginal(ctx, b.OriginalURL); err == nil {
+		if shortURL, err := s.GetByOriginal(ctx, userID, b.OriginalURL); err == nil {
 			return []models.ShortLink{{ShortURL: shortURL, OriginalURL: b.OriginalURL}}, storeerror.ErrNotUnique
 		}
 	}
 	shortAppled := make([]string, 0)
 	for _, req := range batch {
-		_, err := s.Set(ctx, req.ShortURL, req.OriginalURL)
+		_, err := s.Set(ctx, userID, req.ShortURL, req.OriginalURL)
 		if err != nil {
 			if !errors.Is(err, storeerror.ErrDuplicateShortURL) {
 				for _, a := range shortAppled {
-					s.DeleteShortURL(ctx, a)
+					s.RemoveShortURL(ctx, userID, a)
 				}
 			}
-			return output, fmt.Errorf("set link `%s` failed: %w", req.OriginalURL, err)
+			return []models.ShortLink{}, fmt.Errorf("set link `%s` failed: %w", req.OriginalURL, err)
 		}
 		shortAppled = append(shortAppled, req.ShortURL)
+		output = append(output, req)
 	}
 	return output, nil
 }
 
-func (s *Store) GetByOriginal(ctx context.Context, original string) (string, error) {
+func (s *Store) GetByOriginal(ctx context.Context, userID, originalURL string) (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	for k, v := range s.data {
-		if v == original {
-			return k, nil
+	for _, v := range s.data {
+		if v.OriginalURL == originalURL && v.UserID == userID {
+			return v.ShortURL, nil
 		}
 	}
-	return "", fmt.Errorf("not found short by original: %s", original)
+	return "", fmt.Errorf("not found short by original URL: %s", originalURL)
 }
 
-func (s *Store) DeleteShortURL(ctx context.Context, short string) {
+func (s *Store) RemoveShortURL(ctx context.Context, userID, short string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	delete(s.data, short)
+	newStorage := []StoreItem{}
+	for _, v := range s.data {
+		if !(v.ShortURL == short && v.UserID == userID) {
+			newStorage = append(newStorage, v)
+		}
+	}
+	s.data = newStorage
 }
 
 func (s *Store) Ping(ctx context.Context) error {
+	return nil
+}
+
+func (s *Store) GetAllURL(ctx context.Context, userID string) ([]models.ShortenURL, error) {
+	result := []models.ShortenURL{}
+	for _, v := range s.data {
+		if v.UserID == userID {
+			result = append(result, models.ShortenURL{ShortURL: v.ShortURL, OriginalURL: v.OriginalURL})
+		}
+	}
+	return result, nil
+}
+
+func (s *Store) GetAll() []StoreItem {
+	return s.data
+}
+
+func (s *Store) DeleteShortURLs(ctx context.Context, shorts []models.ShortLink) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for _, short := range shorts {
+		for i, v := range s.data {
+			if v.ShortURL == short.ShortURL && v.UserID == short.UserID {
+				s.data[i].IsDeleted = true
+				break
+			}
+		}
+	}
+	return nil
+}
+
+func (s *Store) HardDeleteURLs(ctx context.Context) error {
+	newData := make([]StoreItem, 0)
+	for _, v := range s.data {
+		if !v.IsDeleted {
+			newData = append(newData, v)
+		}
+	}
+	s.data = newData
+
 	return nil
 }

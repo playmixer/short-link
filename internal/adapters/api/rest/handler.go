@@ -40,7 +40,13 @@ func (s *Server) handlerMain(c *gin.Context) {
 		return
 	}
 
-	sLink, err := s.short.Shorty(ctx, link)
+	userID, err := s.checkAuth(c)
+	if err != nil {
+		c.Writer.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	sLink, err := s.short.Shorty(ctx, userID, link)
 	if err != nil {
 		if errors.Is(err, storeerror.ErrNotUnique) {
 			c.String(http.StatusConflict, s.baseLink(sLink))
@@ -67,6 +73,10 @@ func (s *Server) handlerShort(c *gin.Context) {
 
 	link, err := s.short.GetURL(ctx, id)
 	if err != nil {
+		if errors.Is(err, storeerror.ErrShortURLDeleted) {
+			c.Writer.WriteHeader(http.StatusGone)
+			return
+		}
 		c.Writer.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -101,7 +111,13 @@ func (s *Server) handlerAPIShorten(c *gin.Context) {
 		return
 	}
 
-	sLink, err := s.short.Shorty(ctx, req.URL)
+	userID, err := s.checkAuth(c)
+	if err != nil {
+		c.Writer.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	sLink, err := s.short.Shorty(ctx, userID, req.URL)
 	if err != nil {
 		if errors.Is(err, storeerror.ErrNotUnique) {
 			c.Writer.Header().Add(ContentType, ApplicationJSON)
@@ -156,7 +172,13 @@ func (s *Server) handlerAPIShortenBatch(c *gin.Context) {
 		}
 	}
 
-	sLink, err := s.short.ShortyBatch(ctx, req)
+	userID, err := s.checkAuth(c)
+	if err != nil {
+		c.Writer.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	sLink, err := s.short.ShortyBatch(ctx, userID, req)
 	for i, v := range sLink {
 		sLink[i].ShortURL = s.baseLink(v.ShortURL)
 	}
@@ -166,11 +188,78 @@ func (s *Server) handlerAPIShortenBatch(c *gin.Context) {
 			c.JSON(http.StatusConflict, sLink)
 			return
 		}
-		s.log.Error(fmt.Sprintf("can`t shorted URI `%s`", b), zap.Error(err))
+		s.log.Error("can`t shorted URI", zap.String("URI", string(b)), zap.Error(err))
 		c.Writer.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	c.Writer.Header().Add(ContentType, ApplicationJSON)
 	c.JSON(http.StatusCreated, sLink)
+}
+
+func (s *Server) handlerAPIGetUserURLs(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	userID, err := s.checkAuth(c)
+	if err != nil {
+		c.Writer.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	links, err := s.short.GetAllURL(ctx, userID)
+	if err != nil {
+		s.log.Error("can`t getting URLs by user", zap.String(CookieNameUserID, userID), zap.Error(err))
+		c.Writer.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	for i := range links {
+		links[i].ShortURL = s.baseLink(links[i].ShortURL)
+	}
+	if len(links) == 0 {
+		c.Writer.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	c.Writer.Header().Add(ContentType, ApplicationJSON)
+	c.JSON(http.StatusOK, links)
+}
+
+func (s *Server) handlerAPIDeleteUserURLs(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	userID, err := s.checkAuth(c)
+	if err != nil {
+		c.Writer.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	body, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		s.log.Error("failed read body from request", zap.Error(err))
+		c.Writer.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	var jBody []string
+	err = json.Unmarshal(body, &jBody)
+	if err != nil {
+		s.log.Debug("invalid body", zap.Error(err))
+		c.Writer.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	data := []models.ShortLink{}
+	for _, short := range jBody {
+		data = append(data, models.ShortLink{UserID: userID, ShortURL: short})
+	}
+
+	err = s.short.DeleteShortURLs(ctx, data)
+	if err != nil {
+		s.log.Error("delete short url error", zap.Error(err))
+		c.Writer.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	c.Writer.WriteHeader(http.StatusAccepted)
 }

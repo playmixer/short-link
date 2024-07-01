@@ -12,6 +12,7 @@ import (
 	"github.com/playmixer/short-link/internal/adapters/logger"
 	"github.com/playmixer/short-link/internal/adapters/storage"
 	"github.com/playmixer/short-link/internal/core/shortner"
+	"go.uber.org/zap"
 )
 
 func main() {
@@ -36,15 +37,17 @@ func run() error {
 
 	store, err := storage.NewStore(ctx, &cfg.Store, lgr)
 	if err != nil {
+		lgr.Error("failed initialize storage", zap.Error(err))
 		return fmt.Errorf("failed initialize storage: %w", err)
 	}
 
-	short := shortner.New(store)
+	short := shortner.New(ctx, store, shortner.SetLogger(lgr))
 	srv := rest.New(
 		short,
 		rest.Addr(cfg.API.Rest.Addr),
 		rest.BaseURL(cfg.BaseURL),
 		rest.Logger(lgr),
+		rest.SecretKey([]byte(cfg.API.Rest.SecretKey)),
 	)
 	err = srv.Run()
 	if err != nil {

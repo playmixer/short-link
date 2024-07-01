@@ -117,7 +117,7 @@ func Test_mainHandle(t *testing.T) {
 		t.Errorf("failed initialize storage: %v", err)
 		return
 	}
-	s := shortner.New(store)
+	s := shortner.New(context.Background(), store)
 	srv := rest.New(s, rest.Addr(cfg.API.Rest.Addr), rest.BaseURL(cfg.BaseURL))
 	router := srv.SetupRouter()
 
@@ -126,6 +126,15 @@ func Test_mainHandle(t *testing.T) {
 			w := httptest.NewRecorder()
 			body := strings.NewReader(tt.want.Request)
 			r := httptest.NewRequest(http.MethodPost, "/", body)
+
+			signedCookie, err := srv.CreateJWT("1")
+			require.NoError(t, err)
+			r.AddCookie(&http.Cookie{
+				Name:  rest.CookieNameUserID,
+				Value: signedCookie,
+				Path:  "/",
+			})
+
 			router.ServeHTTP(w, r)
 
 			result := w.Result()
@@ -175,7 +184,7 @@ func Test_shortHandle(t *testing.T) {
 		t.Errorf("failed initialize storage: %v", err)
 		return
 	}
-	s := shortner.New(store)
+	s := shortner.New(context.Background(), store)
 	srv := rest.New(s, rest.Addr(cfg.API.Rest.Addr), rest.BaseURL(cfg.BaseURL))
 	router := srv.SetupRouter()
 
@@ -183,6 +192,15 @@ func Test_shortHandle(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest(http.MethodGet, "/QW23qq", http.NoBody)
+
+			signedCookie, err := srv.CreateJWT("1")
+			require.NoError(t, err)
+			r.AddCookie(&http.Cookie{
+				Name:  rest.CookieNameUserID,
+				Value: signedCookie,
+				Path:  "/",
+			})
+
 			router.ServeHTTP(w, r)
 
 			result := w.Result()
@@ -271,7 +289,7 @@ func Test_apiShorten(t *testing.T) {
 		t.Errorf("failed initialize storage: %v", err)
 		return
 	}
-	s := shortner.New(store)
+	s := shortner.New(context.Background(), store)
 	srv := rest.New(s, rest.Addr(cfg.API.Rest.Addr), rest.BaseURL(cfg.BaseURL))
 	router := srv.SetupRouter()
 
@@ -284,6 +302,15 @@ func Test_apiShorten(t *testing.T) {
 			}
 			body := strings.NewReader(string(reqBody))
 			r := httptest.NewRequest(http.MethodPost, "/api/shorten", body)
+
+			signedCookie, err := srv.CreateJWT("1")
+			require.NoError(t, err)
+			r.AddCookie(&http.Cookie{
+				Name:  rest.CookieNameUserID,
+				Value: signedCookie,
+				Path:  "/",
+			})
+
 			router.ServeHTTP(w, r)
 
 			result := w.Result()
@@ -341,7 +368,7 @@ func Test_Gzip(t *testing.T) {
 		t.Errorf("failed initialize storage: %v", err)
 		return
 	}
-	s := shortner.New(store)
+	s := shortner.New(context.Background(), store)
 	srv := rest.New(s, rest.Addr(cfg.API.Rest.Addr), rest.BaseURL(cfg.BaseURL))
 	router := srv.SetupRouter()
 
@@ -360,6 +387,15 @@ func Test_Gzip(t *testing.T) {
 			r.Header.Add("Content-Type", "application/json")
 			r.Header.Add("Content-Encoding", "gzip")
 			r.Header.Add("Accept-Encoding", "gzip")
+
+			signedCookie, err := srv.CreateJWT("1")
+			require.NoError(t, err)
+			r.AddCookie(&http.Cookie{
+				Name:  rest.CookieNameUserID,
+				Value: signedCookie,
+				Path:  "/",
+			})
+
 			router.ServeHTTP(w, r)
 
 			result := w.Result()
@@ -390,6 +426,65 @@ func Test_Gzip(t *testing.T) {
 				if _, err = url.ParseRequestURI(res.Result); err != nil {
 					t.Fail()
 				}
+			}
+		})
+	}
+}
+
+func TestServer_handlerAPIGetUserURLs(t *testing.T) {
+	initConfig(t)
+	fmt.Println("a=", cfg.API.Rest.Addr)
+	tests := []struct {
+		name string
+		want struct {
+			StatusCode  int
+			ContentType string
+		}
+	}{
+		{
+			name: "getAll",
+			want: struct {
+				StatusCode  int
+				ContentType string
+			}{
+				StatusCode:  http.StatusNoContent,
+				ContentType: "",
+			},
+		},
+	}
+
+	store, err := storage.NewStore(context.Background(), &storage.Config{Memory: &memory.Config{}}, zap.NewNop())
+	if err != nil {
+		t.Errorf("failed initialize storage: %v", err)
+		return
+	}
+	s := shortner.New(context.Background(), store)
+	srv := rest.New(s, rest.Addr(cfg.API.Rest.Addr), rest.BaseURL(cfg.BaseURL))
+	router := srv.SetupRouter()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest(http.MethodGet, "/api/user/urls", http.NoBody)
+			r.Header.Add("Accept-Encoding", "gzip")
+
+			signedCookie, err := srv.CreateJWT("1")
+			require.NoError(t, err)
+			r.AddCookie(&http.Cookie{
+				Name:  rest.CookieNameUserID,
+				Value: signedCookie,
+				Path:  "/",
+			})
+
+			router.ServeHTTP(w, r)
+
+			result := w.Result()
+			assert.Equal(t, tt.want.StatusCode, result.StatusCode)
+			assert.Equal(t, tt.want.ContentType, result.Header.Get("Content-Type"))
+			err = result.Body.Close()
+			require.NoError(t, err)
+
+			if result.StatusCode != tt.want.StatusCode {
+				t.Fail()
 			}
 		})
 	}

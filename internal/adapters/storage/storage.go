@@ -19,10 +19,13 @@ type Config struct {
 }
 
 type Store interface {
-	Set(ctx context.Context, key, value string) (string, error)
-	Get(ctx context.Context, key string) (string, error)
-	SetBatch(ctx context.Context, batch []models.ShortLink) ([]models.ShortLink, error)
+	Get(ctx context.Context, short string) (string, error)
+	GetAllURL(ctx context.Context, userID string) ([]models.ShortenURL, error)
+	Set(ctx context.Context, userID string, short string, url string) (string, error)
+	SetBatch(ctx context.Context, userID string, batch []models.ShortLink) ([]models.ShortLink, error)
 	Ping(ctx context.Context) error
+	DeleteShortURLs(ctx context.Context, shorts []models.ShortLink) error
+	HardDeleteURLs(ctx context.Context) error
 }
 
 func NewStore(ctx context.Context, cfg *Config, log *zap.Logger) (Store, error) {
