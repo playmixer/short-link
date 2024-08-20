@@ -15,9 +15,9 @@ func getFileLogger(filename string) *zap.Logger {
 	return logger
 }
 
-func BenchmarkLoggerFile(b *testing.B) {
+func BenchmarkLogger(b *testing.B) {
 	logger := getFileLogger("logger_output.log")
-	defer logger.Sync()
+	defer func() { _ = logger.Sync() }()
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -28,10 +28,10 @@ func BenchmarkLoggerFile(b *testing.B) {
 	}
 }
 
-func BenchmarkSugaredLoggerFile(b *testing.B) {
+func BenchmarkSugaredLogger(b *testing.B) {
 	logger := getFileLogger("sugaredlogger_output.log")
 	sugar := logger.Sugar()
-	defer sugar.Sync()
+	defer func() { _ = logger.Sync() }()
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
