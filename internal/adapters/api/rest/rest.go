@@ -16,11 +16,11 @@ import (
 )
 
 const (
-	ContentLength   string = "Content-Length"
-	ContentType     string = "Content-Type"
-	ApplicationJSON string = "application/json"
+	ContentLength   string = "Content-Length"   // заголовок длины конетента
+	ContentType     string = "Content-Type"     // заколовок типа контент
+	ApplicationJSON string = "application/json" // json контент
 
-	CookieNameUserID string = "token"
+	CookieNameUserID string = "token" // поле хранения токента
 )
 
 var (
@@ -52,6 +52,7 @@ type Server struct {
 // Option - опции сервера.
 type Option func(s *Server)
 
+// New создает Server.
 func New(short Shortner, options ...Option) *Server {
 	srv := &Server{
 		addr:      "localhost:8080",

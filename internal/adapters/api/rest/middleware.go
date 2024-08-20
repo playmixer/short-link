@@ -10,6 +10,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// Logger middleware логирования.
 func (s *Server) Logger() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
@@ -25,6 +26,7 @@ func (s *Server) Logger() gin.HandlerFunc {
 	}
 }
 
+// GzipDecompress middleware распаковка сжатых данных.
 func (s *Server) GzipDecompress() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if ok := strings.Contains(c.Request.Header.Get("Content-Encoding"), "gzip"); ok {
@@ -45,6 +47,7 @@ func (s *Server) GzipDecompress() gin.HandlerFunc {
 	}
 }
 
+// GzipCompress middleware запаковывает данные.
 func (s *Server) GzipCompress() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if ok := strings.Contains(c.Request.Header.Get("Accept-Encoding"), "gzip"); ok {
@@ -63,6 +66,7 @@ func (s *Server) GzipCompress() gin.HandlerFunc {
 	}
 }
 
+// CheckCookies middleware проверка куки файлов.
 func (s *Server) CheckCookies() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var ok bool
@@ -93,6 +97,7 @@ func (s *Server) CheckCookies() gin.HandlerFunc {
 	}
 }
 
+// Auth middleware проверка аутентификации пользователя.
 func (s *Server) Auth() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		_, err := s.checkAuth(c)

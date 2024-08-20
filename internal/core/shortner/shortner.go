@@ -47,6 +47,7 @@ type Shortner struct {
 	log      *zap.Logger
 }
 
+// Option интерфейс опции Shortner.
 type Option func(*Shortner)
 
 func SetLogger(log *zap.Logger) Option {
@@ -55,6 +56,7 @@ func SetLogger(log *zap.Logger) Option {
 	}
 }
 
+// New создает Shortner.
 func New(ctx context.Context, s Store, options ...Option) *Shortner {
 	sh := &Shortner{
 		store:    s,
@@ -71,6 +73,7 @@ func New(ctx context.Context, s Store, options ...Option) *Shortner {
 	return sh
 }
 
+// Shorty сокращает ссылку.
 func (s *Shortner) Shorty(ctx context.Context, userID, link string) (sLink string, err error) {
 	if _, err = url.Parse(link); err != nil {
 		return "", fmt.Errorf("error parsing link: %w", err)
@@ -95,6 +98,7 @@ func (s *Shortner) Shorty(ctx context.Context, userID, link string) (sLink strin
 	return sLink, fmt.Errorf("failed to generate a unique short link: %w", err)
 }
 
+// GetURL возвращает оригинальную ссылку.
 func (s *Shortner) GetURL(ctx context.Context, short string) (string, error) {
 	link, err := s.store.Get(ctx, short)
 	if err != nil {
@@ -103,6 +107,7 @@ func (s *Shortner) GetURL(ctx context.Context, short string) (string, error) {
 	return link, nil
 }
 
+// ShortyBatch сокращает список ссылок.
 func (s *Shortner) ShortyBatch(ctx context.Context, userID string, batch []models.ShortenBatchRequest) (
 	output []models.ShortenBatchResponse,
 	err error,
@@ -136,6 +141,7 @@ func (s *Shortner) ShortyBatch(ctx context.Context, userID string, batch []model
 	return output, nil
 }
 
+// PingStore проверяет соединение с хранилищем.
 func (s *Shortner) PingStore(ctx context.Context) error {
 	err := s.store.Ping(ctx)
 	if err != nil {
@@ -144,6 +150,7 @@ func (s *Shortner) PingStore(ctx context.Context) error {
 	return nil
 }
 
+// GetAllURL возврашает ссылки пользователя.
 func (s *Shortner) GetAllURL(ctx context.Context, userID string) ([]models.ShortenURL, error) {
 	data, err := s.store.GetAllURL(ctx, userID)
 	if err != nil {
@@ -152,6 +159,7 @@ func (s *Shortner) GetAllURL(ctx context.Context, userID string) ([]models.Short
 	return data, nil
 }
 
+// DeleteShortURLs мягкое удаление ссылки.
 func (s *Shortner) DeleteShortURLs(ctx context.Context, shorts []models.ShortLink) error {
 	err := s.store.DeleteShortURLs(ctx, shorts)
 	if err != nil {

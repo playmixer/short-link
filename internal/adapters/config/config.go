@@ -17,6 +17,7 @@ import (
 	"github.com/playmixer/short-link/internal/core/shortner"
 )
 
+// Config конфигурация сервиса.
 type Config struct {
 	API      api.Config
 	Store    storage.Config
@@ -25,6 +26,7 @@ type Config struct {
 	LogLevel string `env:"LOG_LEVEL"`
 }
 
+// Init инициализирует конфигурацию сервиса.
 func Init() (*Config, error) {
 	cfg := Config{
 		API: api.Config{Rest: &rest.Config{}},

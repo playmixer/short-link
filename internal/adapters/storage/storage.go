@@ -25,7 +25,7 @@ type Config struct {
 type Store interface {
 	// Возвращает оригинальную ссылку.
 	Get(ctx context.Context, short string) (string, error)
-	// Возвращает все ссылки пользователя
+	// Возвращает все ссылки пользователя.
 	GetAllURL(ctx context.Context, userID string) ([]models.ShortenURL, error)
 	// Сохраняет ссылку.
 	Set(ctx context.Context, userID string, short string, url string) (string, error)
@@ -33,9 +33,9 @@ type Store interface {
 	SetBatch(ctx context.Context, userID string, batch []models.ShortLink) ([]models.ShortLink, error)
 	// Проверка соединения с хранилищем.
 	Ping(ctx context.Context) error
-	// Мягкое удаляет ссылки
+	// Мягкое удаляет ссылки.
 	DeleteShortURLs(ctx context.Context, shorts []models.ShortLink) error
-	// Хард удаление ссылок
+	// Хард удаление ссылок.
 	HardDeleteURLs(ctx context.Context) error
 }
 

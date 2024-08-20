@@ -12,6 +12,7 @@ import (
 	"github.com/playmixer/short-link/internal/adapters/storage/storeerror"
 )
 
+// StoreItem элемент хранения ссылки.
 type StoreItem struct {
 	ID          string `json:"id"`
 	UserID      string `json:"user_id"`
@@ -20,11 +21,13 @@ type StoreItem struct {
 	IsDeleted   bool   `json:"is_deleted"`
 }
 
+// Store имплементация хранилища.
 type Store struct {
 	mu   *sync.Mutex
 	data []StoreItem
 }
 
+// New создает Store.
 func New(cfg *Config) (*Store, error) {
 	return &Store{
 		data: make([]StoreItem, 0),
@@ -32,6 +35,7 @@ func New(cfg *Config) (*Store, error) {
 	}, nil
 }
 
+// Set Сохраняет ссылку.
 func (s *Store) Set(ctx context.Context, userID, shortURL, originalURL string) (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -54,6 +58,7 @@ func (s *Store) Set(ctx context.Context, userID, shortURL, originalURL string) (
 	return shortURL, nil
 }
 
+// GetByUser Возвращает оригинальную ссылку пользователя.
 func (s *Store) GetByUser(ctx context.Context, userID, shortURL string) (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -65,6 +70,7 @@ func (s *Store) GetByUser(ctx context.Context, userID, shortURL string) (string,
 	return "", storeerror.ErrNotFoundKey
 }
 
+// Get Возвращает оригинальную ссылку.
 func (s *Store) Get(ctx context.Context, shortURL string) (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -79,6 +85,7 @@ func (s *Store) Get(ctx context.Context, shortURL string) (string, error) {
 	return "", storeerror.ErrNotFoundKey
 }
 
+// SetBatch Сохраняет список ссылок.
 func (s *Store) SetBatch(ctx context.Context, userID string, batch []models.ShortLink) (
 	output []models.ShortLink,
 	err error,
@@ -108,6 +115,7 @@ func (s *Store) SetBatch(ctx context.Context, userID string, batch []models.Shor
 	return output, nil
 }
 
+// GetByOriginal возврашает коротку ссылку по оригинальной.
 func (s *Store) GetByOriginal(ctx context.Context, userID, originalURL string) (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -119,6 +127,7 @@ func (s *Store) GetByOriginal(ctx context.Context, userID, originalURL string) (
 	return "", fmt.Errorf("not found short by original URL: %s", originalURL)
 }
 
+// RemoveShortURL удаление ссылки.
 func (s *Store) RemoveShortURL(ctx context.Context, userID, short string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -131,10 +140,12 @@ func (s *Store) RemoveShortURL(ctx context.Context, userID, short string) {
 	s.data = newStorage
 }
 
+// Ping Проверка соединения с хранилищем.
 func (s *Store) Ping(ctx context.Context) error {
 	return nil
 }
 
+// GetAllURL Возвращает все ссылки пользователя.
 func (s *Store) GetAllURL(ctx context.Context, userID string) ([]models.ShortenURL, error) {
 	result := []models.ShortenURL{}
 	for _, v := range s.data {
@@ -145,10 +156,12 @@ func (s *Store) GetAllURL(ctx context.Context, userID string) ([]models.ShortenU
 	return result, nil
 }
 
+// GetAll возвращает все ссылки.
 func (s *Store) GetAll() []StoreItem {
 	return s.data
 }
 
+// DeleteShortURLs Мягкое удаляет ссылки.
 func (s *Store) DeleteShortURLs(ctx context.Context, shorts []models.ShortLink) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -164,6 +177,7 @@ func (s *Store) DeleteShortURLs(ctx context.Context, shorts []models.ShortLink) 
 	return nil
 }
 
+// HardDeleteURLs Хард удаление ссылок.
 func (s *Store) HardDeleteURLs(ctx context.Context) error {
 	newData := make([]StoreItem, 0)
 	for _, v := range s.data {

@@ -16,11 +16,13 @@ import (
 	"github.com/playmixer/short-link/internal/adapters/storage/storeerror"
 )
 
+// Store имлементация файлового хранилища.
 type Store struct {
 	*memory.Store
 	filepath string
 }
 
+// New создает Store.
 func New(cfg *Config) (*Store, error) {
 	m, err := memory.New(&memory.Config{})
 	if err != nil {
@@ -38,6 +40,7 @@ func New(cfg *Config) (*Store, error) {
 	return s, nil
 }
 
+// Set Сохраняет ссылку.
 func (s *Store) Set(ctx context.Context, userID, key, value string) (string, error) {
 	shortURL, err := s.Store.Set(ctx, userID, key, value)
 	if err != nil {
@@ -72,6 +75,7 @@ func (s *Store) Set(ctx context.Context, userID, key, value string) (string, err
 	return shortURL, nil
 }
 
+// SetBatch Сохраняет список ссылок.
 func (s *Store) SetBatch(ctx context.Context, userID string, batch []models.ShortLink) (
 	output []models.ShortLink,
 	err error,
@@ -95,6 +99,7 @@ func (s *Store) SetBatch(ctx context.Context, userID string, batch []models.Shor
 	return output, nil
 }
 
+// DeleteShortURLs Мягкое удаляет ссылки.
 func (s *Store) DeleteShortURLs(ctx context.Context, shorts []models.ShortLink) error {
 	err := s.Store.DeleteShortURLs(ctx, shorts)
 	if err != nil {
@@ -134,6 +139,7 @@ func (s *Store) reWriteStore() error {
 	return nil
 }
 
+// HardDeleteURLs Хард удаление ссылок.
 func (s *Store) HardDeleteURLs(ctx context.Context) error {
 	err := s.Store.HardDeleteURLs(ctx)
 	if err != nil {
