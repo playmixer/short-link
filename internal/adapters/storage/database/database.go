@@ -9,9 +9,10 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"go.uber.org/zap"
+
 	"github.com/playmixer/short-link/internal/adapters/models"
 	"github.com/playmixer/short-link/internal/adapters/storage/storeerror"
-	"go.uber.org/zap"
 )
 
 type Store struct {

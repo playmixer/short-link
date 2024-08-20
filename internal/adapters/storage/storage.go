@@ -5,11 +5,12 @@ import (
 	"errors"
 	"fmt"
 
+	"go.uber.org/zap"
+
 	"github.com/playmixer/short-link/internal/adapters/models"
 	"github.com/playmixer/short-link/internal/adapters/storage/database"
 	"github.com/playmixer/short-link/internal/adapters/storage/file"
 	"github.com/playmixer/short-link/internal/adapters/storage/memory"
-	"go.uber.org/zap"
 )
 
 type Config struct {

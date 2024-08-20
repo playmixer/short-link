@@ -14,14 +14,15 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
+
 	"github.com/playmixer/short-link/internal/adapters/api/rest"
 	"github.com/playmixer/short-link/internal/adapters/config"
 	"github.com/playmixer/short-link/internal/adapters/storage"
 	"github.com/playmixer/short-link/internal/adapters/storage/memory"
 	"github.com/playmixer/short-link/internal/core/shortner"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"go.uber.org/zap"
 )
 
 var (

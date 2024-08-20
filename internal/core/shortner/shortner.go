@@ -7,10 +7,11 @@ import (
 	"net/url"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/playmixer/short-link/internal/adapters/models"
 	"github.com/playmixer/short-link/internal/adapters/storage/storeerror"
 	"github.com/playmixer/short-link/pkg/util"
-	"go.uber.org/zap"
 )
 
 var (

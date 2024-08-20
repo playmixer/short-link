@@ -9,8 +9,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/playmixer/short-link/internal/adapters/models"
 	"go.uber.org/zap"
+
+	"github.com/playmixer/short-link/internal/adapters/models"
 )
 
 const (

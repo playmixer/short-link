@@ -7,12 +7,13 @@ import (
 	"log"
 	"net/http"
 
+	"go.uber.org/zap"
+
 	"github.com/playmixer/short-link/internal/adapters/api/rest"
 	"github.com/playmixer/short-link/internal/adapters/config"
 	"github.com/playmixer/short-link/internal/adapters/logger"
 	"github.com/playmixer/short-link/internal/adapters/storage"
 	"github.com/playmixer/short-link/internal/core/shortner"
-	"go.uber.org/zap"
 )
 
 func main() {

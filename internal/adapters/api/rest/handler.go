@@ -10,9 +10,10 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
+
 	"github.com/playmixer/short-link/internal/adapters/models"
 	"github.com/playmixer/short-link/internal/adapters/storage/storeerror"
-	"go.uber.org/zap"
 )
 
 func (s *Server) handlerMain(c *gin.Context) {
