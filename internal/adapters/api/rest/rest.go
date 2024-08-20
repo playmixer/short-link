@@ -15,6 +15,7 @@ import (
 	"github.com/playmixer/short-link/internal/adapters/models"
 )
 
+// Константы сервиса.
 const (
 	ContentLength   string = "Content-Length"   // заголовок длины конетента
 	ContentType     string = "Content-Type"     // заколовок типа контент

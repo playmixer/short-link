@@ -50,6 +50,7 @@ type Shortner struct {
 // Option интерфейс опции Shortner.
 type Option func(*Shortner)
 
+// SetLogger установка логера.
 func SetLogger(log *zap.Logger) Option {
 	return func(s *Shortner) {
 		s.log = log
