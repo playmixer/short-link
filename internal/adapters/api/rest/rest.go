@@ -1,3 +1,4 @@
+// Модуль rest предоставляет http сервер и методы взаимодействия с REST API.
 package rest
 
 import (
@@ -26,6 +27,7 @@ var (
 	errInvalidAuthCookie = errors.New("invalid authorization cookie")
 )
 
+// Shortner интерфейс взаимодействия с сервисом сокращения ссылок.
 type Shortner interface {
 	Shorty(ctx context.Context, userID, link string) (string, error)
 	ShortyBatch(ctx context.Context, userID string, links []models.ShortenBatchRequest) (
@@ -38,6 +40,7 @@ type Shortner interface {
 	DeleteShortURLs(ctx context.Context, shorts []models.ShortLink) error
 }
 
+// Server - REST API сервер.
 type Server struct {
 	log       *zap.Logger
 	addr      string
@@ -46,6 +49,7 @@ type Server struct {
 	secretKey []byte
 }
 
+// Option - опции сервера.
 type Option func(s *Server)
 
 func New(short Shortner, options ...Option) *Server {
@@ -63,30 +67,35 @@ func New(short Shortner, options ...Option) *Server {
 	return srv
 }
 
+// BaseURL - Настройка сервера, задает полный путь для сокращенной ссылки.
 func BaseURL(url string) func(*Server) {
 	return func(s *Server) {
 		s.baseURL = url
 	}
 }
 
+// Addr - Насткройка сервера, задает адрес сервера.
 func Addr(addr string) func(s *Server) {
 	return func(s *Server) {
 		s.addr = addr
 	}
 }
 
+// Logger - Устанавливает логер.
 func Logger(log *zap.Logger) func(s *Server) {
 	return func(s *Server) {
 		s.log = log
 	}
 }
 
+// SecretKey - задает секретный ключ.
 func SecretKey(secret []byte) Option {
 	return func(s *Server) {
 		s.secretKey = secret
 	}
 }
 
+// SetupRouter - создает маршруты.
 func (s *Server) SetupRouter() *gin.Engine {
 	r := gin.New()
 	r.Use(
@@ -124,6 +133,7 @@ func (s *Server) SetupRouter() *gin.Engine {
 	return r
 }
 
+// Run - запускает сервер.
 func (s *Server) Run() error {
 	r := s.SetupRouter()
 	if err := r.Run(s.addr); err != nil {
@@ -136,6 +146,7 @@ func (s *Server) baseLink(short string) string {
 	return fmt.Sprintf("%s/%s", s.baseURL, short)
 }
 
+// CreateJWT - Создает JWT ключ и записывает в него ID пользователя.
 func (s *Server) CreateJWT(uniqueID string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"uniqueID": uniqueID,

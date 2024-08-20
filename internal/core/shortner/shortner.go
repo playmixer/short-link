@@ -1,3 +1,4 @@
+// Модуль shortner сокращает ссылки и перенаправляет пользователя на полную.
 package shortner
 
 import (
@@ -15,22 +16,31 @@ import (
 )
 
 var (
-	lengthShortLink         uint = 6
-	numberOfTryGenShortLink      = 3
-	sizeDeleteChanel             = 1024
-	hardDeletingDelay            = time.Second * 10
+	lengthShortLink         uint = 6                // длина сокращенных ссылок.
+	numberOfTryGenShortLink      = 3                // попыток для генерации сокращенной ссылки.
+	sizeDeleteChanel             = 1024             // размер канала удаленных ссылок.
+	hardDeletingDelay            = time.Second * 10 // периодичность запуска полного удаления ссылки.
 )
 
+// Store - интерфейс хранилища ссылок.
 type Store interface {
+	// Возвращает оригинальную ссылку.
 	Get(ctx context.Context, short string) (string, error)
+	// Возвращает все ссылки пользователя
 	GetAllURL(ctx context.Context, userID string) ([]models.ShortenURL, error)
+	// Сохраняет ссылку.
 	Set(ctx context.Context, userID string, short string, url string) (string, error)
+	// Сохраняет список ссылок.
 	SetBatch(ctx context.Context, userID string, batch []models.ShortLink) ([]models.ShortLink, error)
+	// Проверка соединения с хранилищем.
 	Ping(ctx context.Context) error
+	// Мягкое удаляет ссылки
 	DeleteShortURLs(ctx context.Context, shorts []models.ShortLink) error
+	// Хард удаление ссылок
 	HardDeleteURLs(ctx context.Context) error
 }
 
+// Shortner - имплементация сервиса коротких ссылок.
 type Shortner struct {
 	store    Store
 	deleteCh chan models.ShortLink
