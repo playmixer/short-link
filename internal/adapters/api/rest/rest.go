@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/gin-contrib/pprof"
+
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/playmixer/short-link/internal/adapters/models"
@@ -115,6 +117,8 @@ func (s *Server) SetupRouter() *gin.Engine {
 		userAPI.GET("/urls", s.handlerAPIGetUserURLs)
 		userAPI.DELETE("/urls", s.handlerAPIDeleteUserURLs)
 	}
+
+	pprof.Register(r, "debug/pprof")
 
 	return r
 }
