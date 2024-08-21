@@ -44,7 +44,6 @@ func TestStorage_Get(t *testing.T) {
 			require.Equal(tt, original, test.original)
 		})
 	}
-
 }
 
 func TestStorage_GetAll(t *testing.T) {
@@ -67,7 +66,6 @@ func TestStorage_GetAll(t *testing.T) {
 			require.Equal(tt, data, test.res)
 		})
 	}
-
 }
 
 func TestStorage_RemoveShortURL(t *testing.T) {
@@ -102,7 +100,6 @@ func TestStorage_RemoveShortURL(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestStorage_HardDeleteURLs(t *testing.T) {
@@ -139,7 +136,6 @@ func TestStorage_HardDeleteURLs(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestStorage_Ping(t *testing.T) {

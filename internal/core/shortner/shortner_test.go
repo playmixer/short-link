@@ -25,7 +25,6 @@ func createStorage(t *testing.T) storage.Store {
 
 func TestShortner_Shorty(t *testing.T) {
 	type args struct {
-		ctx    context.Context
 		userID string
 		link   string
 	}
@@ -38,7 +37,6 @@ func TestShortner_Shorty(t *testing.T) {
 		{
 			name: "shorted",
 			args: args{
-				ctx:    context.Background(),
 				userID: "1",
 				link:   "https://practicum.yandex.ru/",
 			},
@@ -51,7 +49,7 @@ func TestShortner_Shorty(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			link, err := sh.Shorty(tt.args.ctx, tt.args.userID, tt.args.link)
+			link, err := sh.Shorty(context.Background(), tt.args.userID, tt.args.link)
 			require.NoError(t, err)
 			if tt.wantSLink != "" {
 				require.Equal(t, tt.wantSLink, link)
@@ -61,19 +59,12 @@ func TestShortner_Shorty(t *testing.T) {
 }
 
 func TestShortner_PingStore(t *testing.T) {
-	type args struct {
-		ctx context.Context
-	}
 	tests := []struct {
 		name    string
-		args    args
 		wantErr error
 	}{
 		{
-			name: "success",
-			args: args{
-				ctx: context.Background(),
-			},
+			name:    "success",
 			wantErr: nil,
 		},
 	}
@@ -83,7 +74,7 @@ func TestShortner_PingStore(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := sh.PingStore(tt.args.ctx)
+			err := sh.PingStore(context.Background())
 			require.NoError(t, err)
 		})
 	}
