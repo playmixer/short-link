@@ -27,3 +27,5 @@ golangci-lint
 
 tmp
 scripts
+
+profile.cov

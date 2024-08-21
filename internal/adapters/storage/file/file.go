@@ -53,6 +53,7 @@ func (s *Store) Set(ctx context.Context, userID, key, value string) (string, err
 			s.Store.RemoveShortURL(ctx, userID, shortURL)
 			return "", fmt.Errorf("failed open file: %w", err)
 		}
+		defer func() { _ = f.Close() }()
 		item := memory.StoreItem{
 			ID:          strconv.Itoa(time.Now().UTC().Nanosecond()),
 			UserID:      userID,
@@ -118,6 +119,7 @@ func (s *Store) reWriteStore() error {
 	if err != nil {
 		return fmt.Errorf("failed opend file: %w", err)
 	}
+	defer func() { _ = f.Close() }()
 	for _, v := range s.GetAll() {
 		item := memory.StoreItem{
 			ID:          v.ID,

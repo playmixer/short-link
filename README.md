@@ -34,3 +34,9 @@ git fetch template && git checkout template/main .github
 
 # profiler
 http://127.0.0.1:8080/debug/pprof/
+
+# покрытие тестами
+```cmd
+go test -v -coverpkg=./... -coverprofile=profile.cov ./...
+go tool cover -func profile.cov
+```
