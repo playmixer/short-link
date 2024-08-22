@@ -6,6 +6,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// New создает логер.
 func New(level string) (*zap.Logger, error) {
 	lvl, err := zap.ParseAtomicLevel(level)
 	if err != nil {

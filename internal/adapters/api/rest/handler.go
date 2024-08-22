@@ -10,11 +10,13 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
+
 	"github.com/playmixer/short-link/internal/adapters/models"
 	"github.com/playmixer/short-link/internal/adapters/storage/storeerror"
-	"go.uber.org/zap"
 )
 
+// handlerMain - Сохраняет оригинальную ссылку и возвращает короткую.
 func (s *Server) handlerMain(c *gin.Context) {
 	ctx := c.Request.Context()
 
@@ -60,6 +62,7 @@ func (s *Server) handlerMain(c *gin.Context) {
 	c.String(http.StatusCreated, s.baseLink(sLink))
 }
 
+// handlerShort - перекидывает пользователя на оригинальную ссылку.
 func (s *Server) handlerShort(c *gin.Context) {
 	ctx := c.Request.Context()
 
@@ -85,6 +88,7 @@ func (s *Server) handlerShort(c *gin.Context) {
 	c.Writer.WriteHeader(http.StatusTemporaryRedirect)
 }
 
+// handlerAPIShorten - API метод, сокращает оригинальную ссылку.
 func (s *Server) handlerAPIShorten(c *gin.Context) {
 	ctx := c.Request.Context()
 	b, err := io.ReadAll(c.Request.Body)

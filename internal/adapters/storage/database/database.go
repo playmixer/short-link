@@ -9,16 +9,19 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"go.uber.org/zap"
+
 	"github.com/playmixer/short-link/internal/adapters/models"
 	"github.com/playmixer/short-link/internal/adapters/storage/storeerror"
-	"go.uber.org/zap"
 )
 
+// Store имплементация коннекта с хранилищем бд.
 type Store struct {
 	pool *pgxpool.Pool
 	log  *zap.Logger
 }
 
+// New создает Store.
 func New(ctx context.Context, cfg *Config) (*Store, error) {
 	var err error
 
@@ -41,6 +44,7 @@ func New(ctx context.Context, cfg *Config) (*Store, error) {
 	return s, nil
 }
 
+// Set Сохраняет ссылку.
 func (s *Store) Set(ctx context.Context, userID, short, original string) (output string, err error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -74,6 +78,7 @@ func (s *Store) Set(ctx context.Context, userID, short, original string) (output
 	return short, nil
 }
 
+// Get Возвращает оригинальную ссылку.
 func (s *Store) Get(ctx context.Context, short string) (string, error) {
 	row := s.pool.QueryRow(ctx,
 		"select original_url, is_deleted from short_link where short_url = $1",
@@ -91,6 +96,7 @@ func (s *Store) Get(ctx context.Context, short string) (string, error) {
 	return value, nil
 }
 
+// SetBatch Сохраняет список ссылок.
 func (s *Store) SetBatch(ctx context.Context, userID string, data []models.ShortLink) (
 	output []models.ShortLink,
 	reserr error,
@@ -159,6 +165,7 @@ func (s *Store) getByOriginal(ctx context.Context, tx pgx.Tx, userID, original s
 	return value, nil
 }
 
+// Ping Проверка соединения с хранилищем.
 func (s *Store) Ping(ctx context.Context) error {
 	err := s.pool.Ping(ctx)
 	if err != nil {
@@ -168,6 +175,7 @@ func (s *Store) Ping(ctx context.Context) error {
 	return nil
 }
 
+// GetAllURL Возвращает все ссылки пользователя.
 func (s *Store) GetAllURL(ctx context.Context, userID string) ([]models.ShortenURL, error) {
 	result := []models.ShortenURL{}
 	rows, err := s.pool.Query(ctx,
@@ -186,6 +194,7 @@ func (s *Store) GetAllURL(ctx context.Context, userID string) ([]models.ShortenU
 	return result, nil
 }
 
+// DeleteShortURLs Мягкое удаляет ссылки.
 func (s *Store) DeleteShortURLs(ctx context.Context, shorts []models.ShortLink) error {
 	sqlString := `update short_link set is_deleted = true 
 where user_id = @user_id and short_url = @short_url and is_deleted = false`
@@ -216,6 +225,7 @@ where user_id = @user_id and short_url = @short_url and is_deleted = false`
 	return nil
 }
 
+// HardDeleteURLs Хард удаление ссылок.
 func (s *Store) HardDeleteURLs(ctx context.Context) error {
 	sqlString := `delete from short_link where is_deleted = true`
 	_, err := s.pool.Exec(ctx, sqlString)

@@ -10,11 +10,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// GzipReader оборачивает io.ReadCloser и имплементирует интерфейс io.ReadCloser.
 type GzipReader struct {
 	r  io.ReadCloser
 	gz *gzip.Reader
 }
 
+// NewGzipReader создает GzipReader.
 func NewGzipReader(r io.ReadCloser) (*GzipReader, error) {
 	gzbody, err := io.ReadAll(r)
 	if err != nil {
@@ -33,6 +35,7 @@ func NewGzipReader(r io.ReadCloser) (*GzipReader, error) {
 	}, nil
 }
 
+// Read читает из GzipReader.
 func (gr GzipReader) Read(p []byte) (n int, err error) {
 	n, err = gr.gz.Read(p)
 	if err != nil && !errors.Is(err, io.EOF) {
@@ -41,6 +44,7 @@ func (gr GzipReader) Read(p []byte) (n int, err error) {
 	return
 }
 
+// Close закрывает.
 func (gr *GzipReader) Close() (err error) {
 	err1 := gr.gz.Close()
 	err2 := gr.r.Close()
@@ -57,6 +61,7 @@ type gzipWriter struct {
 	writer *gzip.Writer
 }
 
+// NewGzipWriter оборачивает gin.ResponseWriter.
 func NewGzipWriter(c *gin.Context) *gzipWriter {
 	return &gzipWriter{
 		c.Writer,
@@ -64,6 +69,7 @@ func NewGzipWriter(c *gin.Context) *gzipWriter {
 	}
 }
 
+// Write записывает в тело ответа.
 func (gw *gzipWriter) Write(p []byte) (n int, err error) {
 	n, err = gw.writer.Write(p)
 	if err != nil {
@@ -72,6 +78,7 @@ func (gw *gzipWriter) Write(p []byte) (n int, err error) {
 	return
 }
 
+// WriteString записывает строку в тело ответа.
 func (gw *gzipWriter) WriteString(s string) (n int, err error) {
 	n, err = gw.writer.Write([]byte(s))
 	if err != nil {

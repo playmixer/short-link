@@ -5,29 +5,41 @@ import (
 	"errors"
 	"fmt"
 
+	"go.uber.org/zap"
+
 	"github.com/playmixer/short-link/internal/adapters/models"
 	"github.com/playmixer/short-link/internal/adapters/storage/database"
 	"github.com/playmixer/short-link/internal/adapters/storage/file"
 	"github.com/playmixer/short-link/internal/adapters/storage/memory"
-	"go.uber.org/zap"
 )
 
+// Config - конфигурация хранилища.
+// Хранилище создастся того типа в зависимости какой параметр будет передан.
 type Config struct {
-	Memory   *memory.Config
-	File     *file.Config
-	Database *database.Config
+	Memory   *memory.Config   // Memory - сохранение в памяти.
+	File     *file.Config     // File - хранение в файле.
+	Database *database.Config // Database - хранение в базе данных.
 }
 
+// Store - интерефейс хранилища ссылок.
 type Store interface {
+	// Возвращает оригинальную ссылку.
 	Get(ctx context.Context, short string) (string, error)
+	// Возвращает все ссылки пользователя.
 	GetAllURL(ctx context.Context, userID string) ([]models.ShortenURL, error)
+	// Сохраняет ссылку.
 	Set(ctx context.Context, userID string, short string, url string) (string, error)
+	// Сохраняет список ссылок.
 	SetBatch(ctx context.Context, userID string, batch []models.ShortLink) ([]models.ShortLink, error)
+	// Проверка соединения с хранилищем.
 	Ping(ctx context.Context) error
+	// Мягкое удаляет ссылки.
 	DeleteShortURLs(ctx context.Context, shorts []models.ShortLink) error
+	// Хард удаление ссылок.
 	HardDeleteURLs(ctx context.Context) error
 }
 
+// NewStore - Создает хранилище.
 func NewStore(ctx context.Context, cfg *Config, log *zap.Logger) (Store, error) {
 	if cfg.Database != nil && cfg.Database.DSN != "" {
 		cfg.Database.SetLogger(log)

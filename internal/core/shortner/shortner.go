@@ -1,3 +1,4 @@
+// Модуль shortner сокращает ссылки и перенаправляет пользователя на полную.
 package shortner
 
 import (
@@ -7,43 +8,56 @@ import (
 	"net/url"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/playmixer/short-link/internal/adapters/models"
 	"github.com/playmixer/short-link/internal/adapters/storage/storeerror"
 	"github.com/playmixer/short-link/pkg/util"
-	"go.uber.org/zap"
 )
 
 var (
-	lengthShortLink         uint = 6
-	numberOfTryGenShortLink      = 3
-	sizeDeleteChanel             = 1024
-	hardDeletingDelay            = time.Second * 10
+	lengthShortLink         uint = 6                // длина сокращенных ссылок.
+	numberOfTryGenShortLink      = 3                // попыток для генерации сокращенной ссылки.
+	sizeDeleteChanel             = 1024             // размер канала удаленных ссылок.
+	hardDeletingDelay            = time.Second * 10 // периодичность запуска полного удаления ссылки.
 )
 
+// Store - интерфейс хранилища ссылок.
 type Store interface {
+	// Возвращает оригинальную ссылку.
 	Get(ctx context.Context, short string) (string, error)
+	// Возвращает все ссылки пользователя
 	GetAllURL(ctx context.Context, userID string) ([]models.ShortenURL, error)
+	// Сохраняет ссылку.
 	Set(ctx context.Context, userID string, short string, url string) (string, error)
+	// Сохраняет список ссылок.
 	SetBatch(ctx context.Context, userID string, batch []models.ShortLink) ([]models.ShortLink, error)
+	// Проверка соединения с хранилищем.
 	Ping(ctx context.Context) error
+	// Мягкое удаляет ссылки
 	DeleteShortURLs(ctx context.Context, shorts []models.ShortLink) error
+	// Хард удаление ссылок
 	HardDeleteURLs(ctx context.Context) error
 }
 
+// Shortner - имплементация сервиса коротких ссылок.
 type Shortner struct {
 	store    Store
 	deleteCh chan models.ShortLink
 	log      *zap.Logger
 }
 
+// Option интерфейс опции Shortner.
 type Option func(*Shortner)
 
+// SetLogger установка логера.
 func SetLogger(log *zap.Logger) Option {
 	return func(s *Shortner) {
 		s.log = log
 	}
 }
 
+// New создает Shortner.
 func New(ctx context.Context, s Store, options ...Option) *Shortner {
 	sh := &Shortner{
 		store:    s,
@@ -60,6 +74,7 @@ func New(ctx context.Context, s Store, options ...Option) *Shortner {
 	return sh
 }
 
+// Shorty сокращает ссылку.
 func (s *Shortner) Shorty(ctx context.Context, userID, link string) (sLink string, err error) {
 	if _, err = url.Parse(link); err != nil {
 		return "", fmt.Errorf("error parsing link: %w", err)
@@ -84,6 +99,7 @@ func (s *Shortner) Shorty(ctx context.Context, userID, link string) (sLink strin
 	return sLink, fmt.Errorf("failed to generate a unique short link: %w", err)
 }
 
+// GetURL возвращает оригинальную ссылку.
 func (s *Shortner) GetURL(ctx context.Context, short string) (string, error) {
 	link, err := s.store.Get(ctx, short)
 	if err != nil {
@@ -92,6 +108,7 @@ func (s *Shortner) GetURL(ctx context.Context, short string) (string, error) {
 	return link, nil
 }
 
+// ShortyBatch сокращает список ссылок.
 func (s *Shortner) ShortyBatch(ctx context.Context, userID string, batch []models.ShortenBatchRequest) (
 	output []models.ShortenBatchResponse,
 	err error,
@@ -125,6 +142,7 @@ func (s *Shortner) ShortyBatch(ctx context.Context, userID string, batch []model
 	return output, nil
 }
 
+// PingStore проверяет соединение с хранилищем.
 func (s *Shortner) PingStore(ctx context.Context) error {
 	err := s.store.Ping(ctx)
 	if err != nil {
@@ -133,6 +151,7 @@ func (s *Shortner) PingStore(ctx context.Context) error {
 	return nil
 }
 
+// GetAllURL возврашает ссылки пользователя.
 func (s *Shortner) GetAllURL(ctx context.Context, userID string) ([]models.ShortenURL, error) {
 	data, err := s.store.GetAllURL(ctx, userID)
 	if err != nil {
@@ -141,6 +160,7 @@ func (s *Shortner) GetAllURL(ctx context.Context, userID string) ([]models.Short
 	return data, nil
 }
 
+// DeleteShortURLs мягкое удаление ссылки.
 func (s *Shortner) DeleteShortURLs(ctx context.Context, shorts []models.ShortLink) error {
 	err := s.store.DeleteShortURLs(ctx, shorts)
 	if err != nil {

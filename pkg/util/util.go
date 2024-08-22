@@ -4,6 +4,7 @@ import (
 	"math/rand"
 )
 
+// RandomString генерирует строку заданой длины.
 func RandomString(n uint) string {
 	var letterRunes = []byte("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")
 	b := make([]byte, n)

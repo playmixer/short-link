@@ -493,8 +493,8 @@ linters:
     - goconst
     - gocritic
     - godot
-    # - gofmt
-    # - goimports
+    - gofmt
+    - goimports
     - gomnd
     - goprintffuncname
     - gosec
