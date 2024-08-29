@@ -40,3 +40,13 @@ http://127.0.0.1:8080/debug/pprof/
 go test -v -coverpkg=./... -coverprofile=profile.cov ./...
 go tool cover -func profile.cov
 ```
+
+# анализатор
+```cmd
+go build -o ./staticlint.exe .\cmd\staticlint\main.go
+staticlint.exe .\...
+```
+или
+```cmd
+go run .\cmd\staticlint\main.go .\...
+```
