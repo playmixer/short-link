@@ -14,6 +14,7 @@ func RandomString(n uint) string {
 	return string(b)
 }
 
+// BuildData возвращает значение билдера.
 func BuildData(data string) string {
 	if data != "" {
 		return data
