@@ -14,6 +14,7 @@ import (
 	"github.com/playmixer/short-link/internal/adapters/logger"
 	"github.com/playmixer/short-link/internal/adapters/storage"
 	"github.com/playmixer/short-link/internal/core/shortner"
+	"github.com/playmixer/short-link/pkg/util"
 )
 
 var (
@@ -23,9 +24,9 @@ var (
 )
 
 func main() {
-	fmt.Println("Build verson: " + buildData(buildVersion))
-	fmt.Println("Build date: " + buildData(buildDate))
-	fmt.Println("Build commit: " + buildData(buildCommit))
+	fmt.Println("Build verson: " + util.BuildData(buildVersion))
+	fmt.Println("Build date: " + util.BuildData(buildDate))
+	fmt.Println("Build commit: " + util.BuildData(buildCommit))
 	if err := run(); !errors.Is(err, http.ErrServerClosed) {
 		log.Fatal(err)
 	}
@@ -64,11 +65,4 @@ func run() error {
 		return fmt.Errorf("stop server: %w", err)
 	}
 	return nil
-}
-
-func buildData(data string) string {
-	if data != "" {
-		return data
-	}
-	return "N/A"
 }

@@ -13,3 +13,10 @@ func RandomString(n uint) string {
 	}
 	return string(b)
 }
+
+func BuildData(data string) string {
+	if data != "" {
+		return data
+	}
+	return "N/A"
+}

@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/playmixer/short-link/internal/adapters/models"
 	"github.com/playmixer/short-link/internal/adapters/storage/file"
 	"github.com/playmixer/short-link/internal/adapters/storage/memory"
 	"github.com/playmixer/short-link/internal/adapters/storage/storeerror"
@@ -54,6 +55,38 @@ func TestStorage_Get(t *testing.T) {
 			original, err := s.Get(ctx, test.short)
 			require.Error(tt, err, storeerror.ErrNotFoundKey)
 			require.Equal(tt, original, test.original)
+		})
+	}
+	removeFileStorage(t)
+}
+
+func TestStorage_SetBatch(t *testing.T) {
+	type cases struct {
+		name   string
+		userID string
+		batch  []models.ShortLink
+		want   []models.ShortLink
+	}
+	tests := []cases{
+		{
+			name:   "default",
+			userID: "1",
+			batch: []models.ShortLink{
+				{ShortURL: "QWE123", OriginalURL: "https://stackoverflow.com/"},
+			},
+			want: []models.ShortLink{},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(tt *testing.T) {
+			ctx := context.Background()
+			s := createFileStorage(tt)
+			res, err := s.SetBatch(ctx, test.userID, test.batch)
+			require.NoError(tt, err)
+			for _, r := range res {
+				require.NotEmpty(tt, r.OriginalURL)
+				require.NotEmpty(tt, r.ShortURL)
+			}
 		})
 	}
 	removeFileStorage(t)

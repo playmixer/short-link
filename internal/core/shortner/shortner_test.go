@@ -1,8 +1,9 @@
 // Модуль shortner сокращает ссылки и перенаправляет пользователя на полную.
-package shortner_test
+package shortner
 
 import (
 	"context"
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -10,7 +11,6 @@ import (
 
 	"github.com/playmixer/short-link/internal/adapters/storage"
 	"github.com/playmixer/short-link/internal/adapters/storage/memory"
-	"github.com/playmixer/short-link/internal/core/shortner"
 )
 
 func createStorage(t *testing.T) storage.Store {
@@ -45,7 +45,7 @@ func TestShortner_Shorty(t *testing.T) {
 	}
 
 	s := createStorage(t)
-	sh := shortner.New(context.Background(), s)
+	sh := New(context.Background(), s)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -70,12 +70,22 @@ func TestShortner_PingStore(t *testing.T) {
 	}
 
 	s := createStorage(t)
-	sh := shortner.New(context.Background(), s)
+	sh := New(context.Background(), s)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := sh.PingStore(context.Background())
 			require.NoError(t, err)
 		})
+	}
+}
+
+func TestSetLogger(t *testing.T) {
+	s := &Shortner{}
+	lgr := zap.NewNop()
+	SetLogger(lgr)(s)
+
+	if reflect.ValueOf(lgr).Pointer() != reflect.ValueOf(s.log).Pointer() {
+		t.Fatal("logger not set")
 	}
 }
