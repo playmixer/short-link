@@ -16,7 +16,16 @@ import (
 	"github.com/playmixer/short-link/internal/core/shortner"
 )
 
+var (
+	buildVersion string
+	buildDate    string
+	buildCommit  string
+)
+
 func main() {
+	fmt.Println("Build verson: " + buildData(buildVersion))
+	fmt.Println("Build date: " + buildData(buildDate))
+	fmt.Println("Build commit: " + buildData(buildCommit))
 	if err := run(); !errors.Is(err, http.ErrServerClosed) {
 		log.Fatal(err)
 	}
@@ -55,4 +64,11 @@ func run() error {
 		return fmt.Errorf("stop server: %w", err)
 	}
 	return nil
+}
+
+func buildData(data string) string {
+	if data != "" {
+		return data
+	}
+	return "N/A"
 }

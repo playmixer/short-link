@@ -50,3 +50,8 @@ staticlint.exe .\...
 ```cmd
 go run .\cmd\staticlint\main.go .\...
 ```
+
+# build
+```bash
+go build -ldflags "-X main.buildVersion=v1.0.1 -X 'main.buildDate=$(date +'%Y/%m/%d %H:%M:%S')' -X 'main.buildCommit=$(git show --oneline -s)'" ./cmd/shortener/main.go
+```
