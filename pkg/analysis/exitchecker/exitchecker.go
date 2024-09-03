@@ -25,16 +25,24 @@ func run(pass *analysis.Pass) (result interface{}, err error) {
 			if fn, ok := n.(*ast.FuncDecl); ok && fn.Name.Name == "main" {
 				// Проходим по всем выражениям функции
 				for _, stmt := range fn.Body.List {
-					if exprStmt, ok := stmt.(*ast.ExprStmt); ok {
-						if callExpr, ok := exprStmt.X.(*ast.CallExpr); ok {
-							if fun, ok := callExpr.Fun.(*ast.SelectorExpr); ok {
-								if pkgIdent, ok := fun.X.(*ast.Ident); ok {
-									if pkgIdent.Name == "os" && fun.Sel.Name == "Exit" {
-										pass.Reportf(callExpr.Pos(), "found os.Exit in main function")
-									}
-								}
-							}
-						}
+					exprStmt, ok := stmt.(*ast.ExprStmt)
+					if !ok {
+						continue
+					}
+					callExpr, ok := exprStmt.X.(*ast.CallExpr)
+					if !ok {
+						continue
+					}
+					fun, ok := callExpr.Fun.(*ast.SelectorExpr)
+					if !ok {
+						continue
+					}
+					pkgIdent, ok := fun.X.(*ast.Ident)
+					if !ok {
+						continue
+					}
+					if pkgIdent.Name == "os" && fun.Sel.Name == "Exit" {
+						pass.Reportf(callExpr.Pos(), "found os.Exit in main function")
 					}
 				}
 			}

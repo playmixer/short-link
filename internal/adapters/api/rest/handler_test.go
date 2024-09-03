@@ -147,8 +147,9 @@ func Test_mainHandle(t *testing.T) {
 			err = result.Body.Close()
 			require.NoError(t, err)
 
-			if _, err = url.ParseRequestURI(string(b)); result.StatusCode == http.StatusCreated && err != nil {
-				t.Fail()
+			if result.StatusCode == http.StatusCreated {
+				_, err = url.ParseRequestURI(string(b))
+				require.NoError(t, err)
 			}
 		})
 	}
@@ -323,18 +324,15 @@ func Test_apiShorten(t *testing.T) {
 			require.NoError(t, err)
 			err = result.Body.Close()
 			require.NoError(t, err)
-			if result.StatusCode != tt.want.StatusCode {
-				t.Fail()
-			}
+			require.Equal(t, result.StatusCode, tt.want.StatusCode)
 			if result.StatusCode == http.StatusCreated && err != nil {
 				var res struct {
 					Result string `json:"result"`
 				}
 				err = json.Unmarshal(b, &res)
 				require.NoError(t, err)
-				if _, err = url.ParseRequestURI(res.Result); err != nil {
-					t.Fail()
-				}
+				_, err = url.ParseRequestURI(res.Result)
+				require.NoError(t, err)
 			}
 		})
 	}
@@ -396,18 +394,15 @@ func Test_apiPing(t *testing.T) {
 			require.NoError(t, err)
 			err = result.Body.Close()
 			require.NoError(t, err)
-			if result.StatusCode != tt.want.StatusCode {
-				t.Fail()
-			}
+			require.Equal(t, result.StatusCode, tt.want.StatusCode)
 			if result.StatusCode == http.StatusCreated && err != nil {
 				var res struct {
 					Result string `json:"result"`
 				}
 				err = json.Unmarshal(b, &res)
 				require.NoError(t, err)
-				if _, err = url.ParseRequestURI(res.Result); err != nil {
-					t.Fail()
-				}
+				_, err = url.ParseRequestURI(res.Result)
+				require.NoError(t, err)
 			}
 		})
 	}
@@ -490,18 +485,15 @@ func Test_apiShortenBatch(t *testing.T) {
 			require.NoError(t, err)
 			err = result.Body.Close()
 			require.NoError(t, err)
-			if result.StatusCode != tt.want.StatusCode {
-				t.Fail()
-			}
+			require.Equal(t, result.StatusCode, tt.want.StatusCode)
 			if result.StatusCode == http.StatusCreated && err != nil {
 				var res struct {
 					Result string `json:"result"`
 				}
 				err = json.Unmarshal(b, &res)
 				require.NoError(t, err)
-				if _, err = url.ParseRequestURI(res.Result); err != nil {
-					t.Fail()
-				}
+				_, err = url.ParseRequestURI(res.Result)
+				require.NoError(t, err)
 			}
 		})
 	}
@@ -577,18 +569,15 @@ func Test_apiDeleteUserURLs(t *testing.T) {
 			require.NoError(t, err)
 			err = result.Body.Close()
 			require.NoError(t, err)
-			if result.StatusCode != tt.want.StatusCode {
-				t.Fail()
-			}
+			require.Equal(t, result.StatusCode, tt.want.StatusCode)
 			if result.StatusCode == http.StatusCreated && err != nil {
 				var res struct {
 					Result string `json:"result"`
 				}
 				err = json.Unmarshal(b, &res)
 				require.NoError(t, err)
-				if _, err = url.ParseRequestURI(res.Result); err != nil {
-					t.Fail()
-				}
+				_, err = url.ParseRequestURI(res.Result)
+				require.NoError(t, err)
 			}
 		})
 	}
@@ -658,9 +647,7 @@ func Test_Gzip(t *testing.T) {
 			assert.Equal(t, tt.want.StatusCode, result.StatusCode)
 			assert.Equal(t, tt.want.ContentType, result.Header.Get("Content-Type"))
 
-			if result.StatusCode != tt.want.StatusCode {
-				t.Fail()
-			}
+			require.Equal(t, result.StatusCode, tt.want.StatusCode)
 			if result.StatusCode == http.StatusCreated && err == nil {
 				gr, err := gzip.NewReader(result.Body)
 				require.NoError(t, err)
@@ -679,9 +666,8 @@ func Test_Gzip(t *testing.T) {
 					t.Fatal(gr.Extra)
 				}
 				require.NoError(t, err)
-				if _, err = url.ParseRequestURI(res.Result); err != nil {
-					t.Fail()
-				}
+				_, err = url.ParseRequestURI(res.Result)
+				require.NoError(t, err)
 			}
 		})
 	}
@@ -739,9 +725,7 @@ func TestServer_handlerAPIGetUserURLs(t *testing.T) {
 			err = result.Body.Close()
 			require.NoError(t, err)
 
-			if result.StatusCode != tt.want.StatusCode {
-				t.Fail()
-			}
+			require.Equal(t, result.StatusCode, tt.want.StatusCode)
 		})
 	}
 }
