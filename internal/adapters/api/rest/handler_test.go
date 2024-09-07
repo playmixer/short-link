@@ -20,6 +20,7 @@ import (
 
 	"github.com/playmixer/short-link/internal/adapters/api/rest"
 	"github.com/playmixer/short-link/internal/adapters/config"
+	"github.com/playmixer/short-link/internal/adapters/models"
 	"github.com/playmixer/short-link/internal/adapters/storage"
 	"github.com/playmixer/short-link/internal/adapters/storage/memory"
 	"github.com/playmixer/short-link/internal/core/shortner"
@@ -146,8 +147,9 @@ func Test_mainHandle(t *testing.T) {
 			err = result.Body.Close()
 			require.NoError(t, err)
 
-			if _, err = url.ParseRequestURI(string(b)); result.StatusCode == http.StatusCreated && err != nil {
-				t.Fail()
+			if result.StatusCode == http.StatusCreated {
+				_, err = url.ParseRequestURI(string(b))
+				require.NoError(t, err)
 			}
 		})
 	}
@@ -322,18 +324,260 @@ func Test_apiShorten(t *testing.T) {
 			require.NoError(t, err)
 			err = result.Body.Close()
 			require.NoError(t, err)
-			if result.StatusCode != tt.want.StatusCode {
-				t.Fail()
-			}
+			require.Equal(t, result.StatusCode, tt.want.StatusCode)
 			if result.StatusCode == http.StatusCreated && err != nil {
 				var res struct {
 					Result string `json:"result"`
 				}
 				err = json.Unmarshal(b, &res)
 				require.NoError(t, err)
-				if _, err = url.ParseRequestURI(res.Result); err != nil {
-					t.Fail()
+				_, err = url.ParseRequestURI(res.Result)
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func Test_apiPing(t *testing.T) {
+	initConfig(t)
+	tests := []struct {
+		name string
+		want struct {
+			StatusCode  int
+			Response    string
+			ContentType string
+		}
+	}{
+		{
+			name: "ok",
+			want: struct {
+				StatusCode  int
+				Response    string
+				ContentType string
+			}{
+				StatusCode:  http.StatusOK,
+				Response:    "",
+				ContentType: "",
+			},
+		},
+	}
+
+	store, err := storage.NewStore(context.Background(), &storage.Config{Memory: &memory.Config{}}, zap.NewNop())
+	if err != nil {
+		t.Errorf("failed initialize storage: %v", err)
+		return
+	}
+	s := shortner.New(context.Background(), store)
+	srv := rest.New(s, rest.Addr(cfg.API.Rest.Addr), rest.BaseURL(cfg.BaseURL))
+	router := srv.SetupRouter()
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest(http.MethodGet, "/ping", http.NoBody)
+
+			signedCookie, err := srv.CreateJWT("1")
+			require.NoError(t, err)
+			r.AddCookie(&http.Cookie{
+				Name:  rest.CookieNameUserID,
+				Value: signedCookie,
+				Path:  "/",
+			})
+
+			router.ServeHTTP(w, r)
+
+			result := w.Result()
+			assert.Equal(t, tt.want.StatusCode, result.StatusCode)
+			cntnt := result.Header.Get("Content-type")
+			assert.Equal(t, tt.want.ContentType, cntnt)
+			b, err := io.ReadAll(result.Body)
+			require.NoError(t, err)
+			err = result.Body.Close()
+			require.NoError(t, err)
+			require.Equal(t, result.StatusCode, tt.want.StatusCode)
+			if result.StatusCode == http.StatusCreated && err != nil {
+				var res struct {
+					Result string `json:"result"`
 				}
+				err = json.Unmarshal(b, &res)
+				require.NoError(t, err)
+				_, err = url.ParseRequestURI(res.Result)
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func Test_apiShortenBatch(t *testing.T) {
+	initConfig(t)
+	type tWant struct {
+		StatusCode  int
+		Response    []models.ShortenBatchResponse
+		ContentType string
+	}
+	tests := []struct {
+		name    string
+		request []models.ShortenBatchRequest
+		want    tWant
+	}{
+		{
+			name: "default",
+			request: []models.ShortenBatchRequest{
+				{CorrelationID: "1", OriginalURL: "https://github.com/"},
+			},
+			want: tWant{
+				StatusCode: http.StatusCreated,
+				Response: []models.ShortenBatchResponse{
+					{CorrelationID: "1"},
+				},
+				ContentType: rest.ApplicationJSON,
+			},
+		},
+		{
+			name: "url invalid",
+			request: []models.ShortenBatchRequest{
+				{CorrelationID: "1", OriginalURL: "github.com/"},
+			},
+			want: tWant{
+				StatusCode: http.StatusBadRequest,
+				Response: []models.ShortenBatchResponse{
+					{CorrelationID: "1"},
+				},
+				ContentType: "",
+			},
+		},
+	}
+
+	store, err := storage.NewStore(context.Background(), &storage.Config{Memory: &memory.Config{}}, zap.NewNop())
+	if err != nil {
+		t.Errorf("failed initialize storage: %v", err)
+		return
+	}
+	s := shortner.New(context.Background(), store)
+	srv := rest.New(s, rest.Addr(cfg.API.Rest.Addr), rest.BaseURL(cfg.BaseURL))
+	router := srv.SetupRouter()
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			reqBody, err := json.Marshal(tt.request)
+			if err != nil {
+				require.NoError(t, err)
+			}
+			body := strings.NewReader(string(reqBody))
+			r := httptest.NewRequest(http.MethodPost, "/api/shorten/batch", body)
+
+			signedCookie, err := srv.CreateJWT("1")
+			require.NoError(t, err)
+			r.AddCookie(&http.Cookie{
+				Name:  rest.CookieNameUserID,
+				Value: signedCookie,
+				Path:  "/",
+			})
+
+			router.ServeHTTP(w, r)
+
+			result := w.Result()
+			assert.Equal(t, tt.want.StatusCode, result.StatusCode)
+			cntnt := result.Header.Get("Content-type")
+			assert.Equal(t, tt.want.ContentType, cntnt)
+			b, err := io.ReadAll(result.Body)
+			require.NoError(t, err)
+			err = result.Body.Close()
+			require.NoError(t, err)
+			require.Equal(t, result.StatusCode, tt.want.StatusCode)
+			if result.StatusCode == http.StatusCreated && err != nil {
+				var res struct {
+					Result string `json:"result"`
+				}
+				err = json.Unmarshal(b, &res)
+				require.NoError(t, err)
+				_, err = url.ParseRequestURI(res.Result)
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func Test_apiDeleteUserURLs(t *testing.T) {
+	initConfig(t)
+	type tWant struct {
+		StatusCode  int
+		ContentType string
+	}
+	tests := []struct {
+		name    string
+		request []string
+		want    tWant
+	}{
+		{
+			name: "default",
+			request: []string{
+				"QWE1123q",
+			},
+			want: tWant{
+				StatusCode:  http.StatusAccepted,
+				ContentType: "",
+			},
+		},
+		{
+			name:    "empty",
+			request: []string{},
+			want: tWant{
+				StatusCode:  http.StatusAccepted,
+				ContentType: "",
+			},
+		},
+	}
+
+	store, err := storage.NewStore(context.Background(), &storage.Config{Memory: &memory.Config{}}, zap.NewNop())
+	if err != nil {
+		t.Errorf("failed initialize storage: %v", err)
+		return
+	}
+	s := shortner.New(context.Background(), store)
+	srv := rest.New(s, rest.Addr(cfg.API.Rest.Addr), rest.BaseURL(cfg.BaseURL))
+	router := srv.SetupRouter()
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			reqBody, err := json.Marshal(tt.request)
+			if err != nil {
+				require.NoError(t, err)
+			}
+			body := strings.NewReader(string(reqBody))
+			r := httptest.NewRequest(http.MethodDelete, "/api/user/urls", body)
+
+			if tt.want.StatusCode != http.StatusUnauthorized {
+				signedCookie, err := srv.CreateJWT("1")
+				require.NoError(t, err)
+				r.AddCookie(&http.Cookie{
+					Name:  rest.CookieNameUserID,
+					Value: signedCookie,
+					Path:  "/",
+				})
+			}
+
+			router.ServeHTTP(w, r)
+
+			result := w.Result()
+			assert.Equal(t, tt.want.StatusCode, result.StatusCode)
+			cntnt := result.Header.Get("Content-type")
+			assert.Equal(t, tt.want.ContentType, cntnt)
+			b, err := io.ReadAll(result.Body)
+			require.NoError(t, err)
+			err = result.Body.Close()
+			require.NoError(t, err)
+			require.Equal(t, result.StatusCode, tt.want.StatusCode)
+			if result.StatusCode == http.StatusCreated && err != nil {
+				var res struct {
+					Result string `json:"result"`
+				}
+				err = json.Unmarshal(b, &res)
+				require.NoError(t, err)
+				_, err = url.ParseRequestURI(res.Result)
+				require.NoError(t, err)
 			}
 		})
 	}
@@ -403,9 +647,7 @@ func Test_Gzip(t *testing.T) {
 			assert.Equal(t, tt.want.StatusCode, result.StatusCode)
 			assert.Equal(t, tt.want.ContentType, result.Header.Get("Content-Type"))
 
-			if result.StatusCode != tt.want.StatusCode {
-				t.Fail()
-			}
+			require.Equal(t, result.StatusCode, tt.want.StatusCode)
 			if result.StatusCode == http.StatusCreated && err == nil {
 				gr, err := gzip.NewReader(result.Body)
 				require.NoError(t, err)
@@ -424,9 +666,8 @@ func Test_Gzip(t *testing.T) {
 					t.Fatal(gr.Extra)
 				}
 				require.NoError(t, err)
-				if _, err = url.ParseRequestURI(res.Result); err != nil {
-					t.Fail()
-				}
+				_, err = url.ParseRequestURI(res.Result)
+				require.NoError(t, err)
 			}
 		})
 	}
@@ -484,9 +725,7 @@ func TestServer_handlerAPIGetUserURLs(t *testing.T) {
 			err = result.Body.Close()
 			require.NoError(t, err)
 
-			if result.StatusCode != tt.want.StatusCode {
-				t.Fail()
-			}
+			require.Equal(t, result.StatusCode, tt.want.StatusCode)
 		})
 	}
 }

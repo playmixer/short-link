@@ -14,9 +14,19 @@ import (
 	"github.com/playmixer/short-link/internal/adapters/logger"
 	"github.com/playmixer/short-link/internal/adapters/storage"
 	"github.com/playmixer/short-link/internal/core/shortner"
+	"github.com/playmixer/short-link/pkg/util"
+)
+
+var (
+	buildVersion string
+	buildDate    string
+	buildCommit  string
 )
 
 func main() {
+	fmt.Println("Build verson: " + util.BuildData(buildVersion))
+	fmt.Println("Build date: " + util.BuildData(buildDate))
+	fmt.Println("Build commit: " + util.BuildData(buildCommit))
 	if err := run(); !errors.Is(err, http.ErrServerClosed) {
 		log.Fatal(err)
 	}

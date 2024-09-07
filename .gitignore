@@ -27,5 +27,6 @@ golangci-lint
 
 tmp
 scripts
+deploy
 
 profile.cov
