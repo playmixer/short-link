@@ -43,6 +43,7 @@ func Init() (*Config, error) {
 	flag.StringVar(&cfg.LogLevel, "l", "info", "logger level")
 	flag.StringVar(&cfg.Store.File.StoragePath, "f", "", "storage file")
 	flag.StringVar(&cfg.Store.Database.DSN, "d", "", "database dsn")
+	flag.BoolVar(&cfg.API.Rest.HTTPSEnable, "s", false, "tls enable")
 	flag.Parse()
 
 	_ = godotenv.Load(".env")

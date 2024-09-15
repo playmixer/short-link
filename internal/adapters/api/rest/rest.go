@@ -48,6 +48,7 @@ type Server struct {
 	short     Shortner
 	baseURL   string
 	secretKey []byte
+	tlsEnable bool
 }
 
 // Option - опции сервера.
@@ -97,6 +98,13 @@ func SecretKey(secret []byte) Option {
 	}
 }
 
+// HTTPSEnable - включает https.
+func HTTPSEnable(enable bool) Option {
+	return func(s *Server) {
+		s.tlsEnable = enable
+	}
+}
+
 // SetupRouter - создает маршруты.
 func (s *Server) SetupRouter() *gin.Engine {
 	r := gin.New()
@@ -138,8 +146,15 @@ func (s *Server) SetupRouter() *gin.Engine {
 // Run - запускает сервер.
 func (s *Server) Run() error {
 	r := s.SetupRouter()
-	if err := r.Run(s.addr); err != nil {
-		return fmt.Errorf("server has failed: %w", err)
+	switch s.tlsEnable {
+	case false:
+		if err := r.Run(s.addr); err != nil {
+			return fmt.Errorf("server has failed: %w", err)
+		}
+	case true:
+		if err := r.RunTLS(s.addr, "./cert/shortner.crt", "./cert/shortner.key"); err != nil {
+			return fmt.Errorf("server has failed: %w", err)
+		}
 	}
 	return nil
 }
