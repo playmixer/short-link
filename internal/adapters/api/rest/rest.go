@@ -163,6 +163,7 @@ func (s *Server) Run() error {
 	return nil
 }
 
+// Stop - остановка сервера.
 func (s *Server) Stop() {
 	ctx, cancel := context.WithTimeout(context.Background(), shutdownDelay)
 	defer cancel()

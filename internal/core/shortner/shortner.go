@@ -193,6 +193,7 @@ func (s *Shortner) workerDeleteingShorts(ctx context.Context) {
 	}
 }
 
+// Wait - ждет завершения горутин.
 func (s *Shortner) Wait() {
 	s.gw.Wait()
 }

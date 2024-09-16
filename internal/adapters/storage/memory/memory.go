@@ -35,6 +35,7 @@ func New(cfg *Config) (*Store, error) {
 	}, nil
 }
 
+// Close - закрыть соединение.
 func (s *Store) Close() {}
 
 // Set Сохраняет ссылку.
