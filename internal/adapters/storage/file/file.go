@@ -40,6 +40,8 @@ func New(cfg *Config) (*Store, error) {
 	return s, nil
 }
 
+func (s *Store) Close() {}
+
 // Set Сохраняет ссылку.
 func (s *Store) Set(ctx context.Context, userID, key, value string) (string, error) {
 	shortURL, err := s.Store.Set(ctx, userID, key, value)

@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"go.uber.org/zap"
 
@@ -21,6 +24,8 @@ var (
 	buildVersion string
 	buildDate    string
 	buildCommit  string
+
+	shutdownDelay = time.Second * 2
 )
 
 func main() {
@@ -33,8 +38,8 @@ func main() {
 }
 
 func run() error {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
+	defer stop()
 
 	cfg, err := config.Init()
 	if err != nil {
@@ -61,9 +66,24 @@ func run() error {
 		rest.SecretKey([]byte(cfg.API.Rest.SecretKey)),
 		rest.HTTPSEnable(cfg.API.Rest.HTTPSEnable),
 	)
-	err = srv.Run()
-	if err != nil {
-		return fmt.Errorf("stop server: %w", err)
-	}
+
+	lgr.Info("Starting")
+	go func() {
+		err = srv.Run()
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			lgr.Error("stop server", zap.Error(err))
+		}
+	}()
+	<-ctx.Done()
+	lgr.Info("Stopping...")
+	ctxShutdown, cancel := context.WithTimeout(context.Background(), shutdownDelay)
+	defer cancel()
+
+	srv.Stop()    // отключаем http сервер.
+	short.Wait()  // ждем завершения горитин.
+	store.Close() // закрываем соединение с бд.
+
+	<-ctxShutdown.Done()
+	lgr.Info("Service stoped")
 	return nil
 }

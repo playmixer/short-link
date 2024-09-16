@@ -35,6 +35,8 @@ func New(cfg *Config) (*Store, error) {
 	}, nil
 }
 
+func (s *Store) Close() {}
+
 // Set Сохраняет ссылку.
 func (s *Store) Set(ctx context.Context, userID, shortURL, originalURL string) (string, error) {
 	s.mu.Lock()

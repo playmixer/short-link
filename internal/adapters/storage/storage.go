@@ -37,6 +37,7 @@ type Store interface {
 	DeleteShortURLs(ctx context.Context, shorts []models.ShortLink) error
 	// Хард удаление ссылок.
 	HardDeleteURLs(ctx context.Context) error
+	Close()
 }
 
 // NewStore - Создает хранилище.
