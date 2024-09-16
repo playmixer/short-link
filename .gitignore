@@ -30,3 +30,4 @@ scripts
 deploy
 
 profile.cov
+config.json
