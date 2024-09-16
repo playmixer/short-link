@@ -32,7 +32,7 @@ func main() {
 	fmt.Println("Build verson: " + util.BuildData(buildVersion))
 	fmt.Println("Build date: " + util.BuildData(buildDate))
 	fmt.Println("Build commit: " + util.BuildData(buildCommit))
-	if err := run(); !errors.Is(err, http.ErrServerClosed) {
+	if err := run(); err != nil {
 		log.Fatal(err)
 	}
 }
