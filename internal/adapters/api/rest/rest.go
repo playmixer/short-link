@@ -5,6 +5,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
+	"time"
 
 	"github.com/gin-contrib/pprof"
 
@@ -26,6 +28,8 @@ const (
 
 var (
 	errInvalidAuthCookie = errors.New("invalid authorization cookie")
+
+	shutdownDelay = time.Second * 5
 )
 
 // Shortner интерфейс взаимодействия с сервисом сокращения ссылок.
@@ -44,10 +48,11 @@ type Shortner interface {
 // Server - REST API сервер.
 type Server struct {
 	log       *zap.Logger
-	addr      string
 	short     Shortner
 	baseURL   string
 	secretKey []byte
+	s         http.Server
+	tlsEnable bool
 }
 
 // Option - опции сервера.
@@ -56,11 +61,11 @@ type Option func(s *Server)
 // New создает Server.
 func New(short Shortner, options ...Option) *Server {
 	srv := &Server{
-		addr:      "localhost:8080",
 		short:     short,
 		log:       zap.NewNop(),
 		secretKey: []byte("rest_secret_key"),
 	}
+	srv.s.Addr = "localhost:8080"
 
 	for _, opt := range options {
 		opt(srv)
@@ -79,7 +84,7 @@ func BaseURL(url string) func(*Server) {
 // Addr - Насткройка сервера, задает адрес сервера.
 func Addr(addr string) func(s *Server) {
 	return func(s *Server) {
-		s.addr = addr
+		s.s.Addr = addr
 	}
 }
 
@@ -94,6 +99,13 @@ func Logger(log *zap.Logger) func(s *Server) {
 func SecretKey(secret []byte) Option {
 	return func(s *Server) {
 		s.secretKey = secret
+	}
+}
+
+// HTTPSEnable - включает https.
+func HTTPSEnable(enable bool) Option {
+	return func(s *Server) {
+		s.tlsEnable = enable
 	}
 }
 
@@ -137,11 +149,29 @@ func (s *Server) SetupRouter() *gin.Engine {
 
 // Run - запускает сервер.
 func (s *Server) Run() error {
-	r := s.SetupRouter()
-	if err := r.Run(s.addr); err != nil {
-		return fmt.Errorf("server has failed: %w", err)
+	s.s.Handler = s.SetupRouter().Handler()
+	switch s.tlsEnable {
+	case false:
+		if err := s.s.ListenAndServe(); err != nil {
+			return fmt.Errorf("server has failed: %w", err)
+		}
+	case true:
+		if err := s.s.ListenAndServeTLS("./cert/shortner.crt", "./cert/shortner.key"); err != nil {
+			return fmt.Errorf("server has failed: %w", err)
+		}
 	}
 	return nil
+}
+
+// Stop - остановка сервера.
+func (s *Server) Stop() {
+	ctx, cancel := context.WithTimeout(context.Background(), shutdownDelay)
+	defer cancel()
+	err := s.s.Shutdown(ctx)
+	if err != nil {
+		s.log.Error("failed shutdown server", zap.Error(err))
+	}
+	s.log.Info("Server exiting")
 }
 
 func (s *Server) baseLink(short string) string {

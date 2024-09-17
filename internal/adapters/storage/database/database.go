@@ -44,6 +44,11 @@ func New(ctx context.Context, cfg *Config) (*Store, error) {
 	return s, nil
 }
 
+// Close - закрыть соединение.
+func (s *Store) Close() {
+	s.pool.Close()
+}
+
 // Set Сохраняет ссылку.
 func (s *Store) Set(ctx context.Context, userID, short, original string) (output string, err error) {
 	tx, err := s.pool.Begin(ctx)

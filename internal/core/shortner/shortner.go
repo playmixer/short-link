@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"sync"
 	"time"
 
 	"go.uber.org/zap"
@@ -45,6 +46,7 @@ type Shortner struct {
 	store    Store
 	deleteCh chan models.ShortLink
 	log      *zap.Logger
+	gw       *sync.WaitGroup
 }
 
 // Option интерфейс опции Shortner.
@@ -63,6 +65,7 @@ func New(ctx context.Context, s Store, options ...Option) *Shortner {
 		store:    s,
 		deleteCh: make(chan models.ShortLink, sizeDeleteChanel),
 		log:      zap.NewNop(),
+		gw:       &sync.WaitGroup{},
 	}
 
 	for _, opt := range options {
@@ -170,6 +173,8 @@ func (s *Shortner) DeleteShortURLs(ctx context.Context, shorts []models.ShortLin
 }
 
 func (s *Shortner) workerDeleteingShorts(ctx context.Context) {
+	s.gw.Add(1)
+	defer s.gw.Done()
 	s.log.Debug("start delete short proccessor")
 	tick := time.NewTicker(hardDeletingDelay)
 
@@ -186,4 +191,9 @@ func (s *Shortner) workerDeleteingShorts(ctx context.Context) {
 			}
 		}
 	}
+}
+
+// Wait - ждет завершения горутин.
+func (s *Shortner) Wait() {
+	s.gw.Wait()
 }
