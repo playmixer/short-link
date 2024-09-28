@@ -173,6 +173,7 @@ func (s *Shortner) DeleteShortURLs(ctx context.Context, shorts []models.ShortLin
 	return nil
 }
 
+// GetState Получение статисики.
 func (s *Shortner) GetState(ctx context.Context) (models.ShortenStats, error) {
 	var err error
 	res := models.ShortenStats{}

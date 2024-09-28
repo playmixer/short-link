@@ -241,6 +241,7 @@ func (s *Store) HardDeleteURLs(ctx context.Context) error {
 	return nil
 }
 
+// GetState Получение статисики.
 func (s *Store) GetState(ctx context.Context) (urls int, users int, err error) {
 	var userCount int
 	var urlCount int

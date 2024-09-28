@@ -111,6 +111,7 @@ func HTTPSEnable(enable bool) Option {
 	}
 }
 
+// TrastedSubnet - установка доступной сети.
 func TrastedSubnet(subnet string) Option {
 	return func(s *Server) {
 		s.trustedSubnet = subnet
