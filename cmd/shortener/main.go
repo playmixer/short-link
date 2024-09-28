@@ -65,6 +65,7 @@ func run() error {
 		rest.Logger(lgr),
 		rest.SecretKey([]byte(cfg.API.Rest.SecretKey)),
 		rest.HTTPSEnable(cfg.API.Rest.HTTPSEnable),
+		rest.TrastedSubnet(cfg.TrastedSubnet),
 	)
 
 	lgr.Info("Starting")

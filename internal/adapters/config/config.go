@@ -23,12 +23,13 @@ import (
 
 // Config конфигурация сервиса.
 type Config struct {
-	API        api.Config
-	Store      storage.Config
-	Shortner   shortner.Config
-	BaseURL    string `env:"BASE_URL"`
-	LogLevel   string `env:"LOG_LEVEL"`
-	ConfigPath string `env:"CONFIG"`
+	API           api.Config
+	Store         storage.Config
+	Shortner      shortner.Config
+	BaseURL       string `env:"BASE_URL"`
+	LogLevel      string `env:"LOG_LEVEL"`
+	ConfigPath    string `env:"CONFIG"`
+	TrastedSubnet string `env:"TRUSTED_SUBNET"`
 }
 
 // Init инициализирует конфигурацию сервиса.
@@ -51,6 +52,7 @@ func Init() (*Config, error) {
 	flag.BoolVar(&cfg.API.Rest.HTTPSEnable, "s", false, "tls enable")
 	flag.StringVar(&cfg.ConfigPath, "c", "", "file configuration")
 	flag.StringVar(&cfg.ConfigPath, "config", "", "file configuration")
+	flag.StringVar(&cfg.TrastedSubnet, "t", "", "trunsted subnet")
 	flag.Parse()
 
 	_ = godotenv.Load(".env")
@@ -74,6 +76,7 @@ type configFile struct {
 	FileStoragePath *string `json:"file_storage_path"`
 	DatabaseDSN     *string `json:"database_dsn"`
 	EnableHTTPS     *bool   `json:"enable_https"`
+	TrustedSubnet   *string `json:"trusted_subner"`
 }
 
 func fromFile(filepath string, cfg *Config) error {
@@ -113,6 +116,9 @@ func fromFile(filepath string, cfg *Config) error {
 	}
 	if configuration.ServerAddress != nil && cfg.API.Rest.Addr == "" {
 		cfg.API.Rest.Addr = *configuration.ServerAddress
+	}
+	if configuration.TrustedSubnet != nil && cfg.TrastedSubnet == "" {
+		cfg.TrastedSubnet = *configuration.TrustedSubnet
 	}
 
 	return nil

@@ -43,16 +43,18 @@ type Shortner interface {
 	GetAllURL(ctx context.Context, userID string) ([]models.ShortenURL, error)
 	PingStore(ctx context.Context) error
 	DeleteShortURLs(ctx context.Context, shorts []models.ShortLink) error
+	GetState(ctx context.Context) (models.ShortenStats, error)
 }
 
 // Server - REST API сервер.
 type Server struct {
-	log       *zap.Logger
-	short     Shortner
-	baseURL   string
-	secretKey []byte
-	s         http.Server
-	tlsEnable bool
+	log           *zap.Logger
+	short         Shortner
+	baseURL       string
+	trustedSubnet string
+	secretKey     []byte
+	s             http.Server
+	tlsEnable     bool
 }
 
 // Option - опции сервера.
@@ -109,6 +111,12 @@ func HTTPSEnable(enable bool) Option {
 	}
 }
 
+func TrastedSubnet(subnet string) Option {
+	return func(s *Server) {
+		s.trustedSubnet = subnet
+	}
+}
+
 // SetupRouter - создает маршруты.
 func (s *Server) SetupRouter() *gin.Engine {
 	r := gin.New()
@@ -140,6 +148,14 @@ func (s *Server) SetupRouter() *gin.Engine {
 	{
 		userAPI.GET("/urls", s.handlerAPIGetUserURLs)
 		userAPI.DELETE("/urls", s.handlerAPIDeleteUserURLs)
+	}
+
+	interAPI := r.Group("/api/internal")
+	interAPI.Use(
+		s.TrustedSubnet(),
+	)
+	{
+		interAPI.GET("/stats", s.handlerAPIInternalStats)
 	}
 
 	pprof.Register(r, "debug/pprof")

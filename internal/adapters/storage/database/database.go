@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 
@@ -93,7 +94,7 @@ func (s *Store) Get(ctx context.Context, short string) (string, error) {
 	var isDeleted bool
 	err := row.Scan(&value, &isDeleted)
 	if err != nil {
-		return "", fmt.Errorf("failed scan url %w", err)
+		return "", fmt.Errorf("failed scan url: %w", err)
 	}
 	if isDeleted {
 		return short, storeerror.ErrShortURLDeleted
@@ -238,4 +239,29 @@ func (s *Store) HardDeleteURLs(ctx context.Context) error {
 		return fmt.Errorf("failed hard deleting URLs: %w", err)
 	}
 	return nil
+}
+
+func (s *Store) GetState(ctx context.Context) (urls int, users int, err error) {
+	var userCount int
+	var urlCount int
+	rows, err := s.pool.Query(ctx,
+		"select sl.user_id, count(*) from short_link sl where is_deleted = false group by sl.user_id",
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return 0, 0, nil
+		}
+		return 0, 0, fmt.Errorf("failed get stats: %w", err)
+	}
+	for rows.Next() {
+		var count int
+		err := rows.Scan(nil, &count)
+		if err != nil {
+			return 0, 0, fmt.Errorf("failed scan url %w", err)
+		}
+		userCount++
+		urlCount += count
+	}
+
+	return urlCount, userCount, nil
 }

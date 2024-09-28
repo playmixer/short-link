@@ -39,6 +39,7 @@ type Store interface {
 	DeleteShortURLs(ctx context.Context, shorts []models.ShortLink) error
 	// Хард удаление ссылок
 	HardDeleteURLs(ctx context.Context) error
+	GetState(ctx context.Context) (urls int, users int, err error)
 }
 
 // Shortner - имплементация сервиса коротких ссылок.
@@ -170,6 +171,18 @@ func (s *Shortner) DeleteShortURLs(ctx context.Context, shorts []models.ShortLin
 		return fmt.Errorf("failed delete short URLs: %w", err)
 	}
 	return nil
+}
+
+func (s *Shortner) GetState(ctx context.Context) (models.ShortenStats, error) {
+	var err error
+	res := models.ShortenStats{}
+
+	res.URLs, res.Users, err = s.store.GetState(ctx)
+	if err != nil {
+		return res, fmt.Errorf("faield get stats: %w", err)
+	}
+
+	return res, nil
 }
 
 func (s *Shortner) workerDeleteingShorts(ctx context.Context) {

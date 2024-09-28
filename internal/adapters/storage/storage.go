@@ -35,6 +35,7 @@ type Store interface {
 	Ping(ctx context.Context) error
 	// Мягкое удаляет ссылки.
 	DeleteShortURLs(ctx context.Context, shorts []models.ShortLink) error
+	GetState(ctx context.Context) (urls int, users int, err error)
 	// Хард удаление ссылок.
 	HardDeleteURLs(ctx context.Context) error
 	Close()

@@ -17,3 +17,9 @@ type ShortenURL struct {
 	ShortURL    string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
 }
+
+// ShortenStats статистика.
+type ShortenStats struct {
+	URLs  int `json:"urls"`
+	Users int `json:"users"`
+}
