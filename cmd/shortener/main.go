@@ -12,7 +12,8 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/playmixer/short-link/internal/adapters/api/rest"
+	"github.com/playmixer/short-link/internal/adapters/api"
+	"github.com/playmixer/short-link/internal/adapters/auth"
 	"github.com/playmixer/short-link/internal/adapters/config"
 	"github.com/playmixer/short-link/internal/adapters/logger"
 	"github.com/playmixer/short-link/internal/adapters/storage"
@@ -57,16 +58,16 @@ func run() error {
 		return fmt.Errorf("failed initialize storage: %w", err)
 	}
 
+	authManager, err := auth.New(auth.SetLogger(lgr), auth.SetSecretKey([]byte(cfg.API.SecretKey)))
+	if err != nil {
+		return fmt.Errorf("failed initializa auth manager: %w", err)
+	}
+
 	short := shortner.New(ctx, store, shortner.SetLogger(lgr))
-	srv := rest.New(
-		short,
-		rest.Addr(cfg.API.Rest.Addr),
-		rest.BaseURL(cfg.BaseURL),
-		rest.Logger(lgr),
-		rest.SecretKey([]byte(cfg.API.Rest.SecretKey)),
-		rest.HTTPSEnable(cfg.API.Rest.HTTPSEnable),
-		rest.TrastedSubnet(cfg.TrastedSubnet),
-	)
+	srv, err := api.New(short, authManager, lgr, cfg.API)
+	if err != nil {
+		return fmt.Errorf("failed initialize api: %w", err)
+	}
 
 	lgr.Info("Starting")
 	go func() {
@@ -80,7 +81,7 @@ func run() error {
 	ctxShutdown, cancel := context.WithTimeout(context.Background(), shutdownDelay)
 	defer cancel()
 
-	srv.Stop()    // отключаем http сервер.
+	srv.Stop()    // отключаем api сервер.
 	short.Wait()  // ждем завершения горитин.
 	store.Close() // закрываем соединение с бд.
 

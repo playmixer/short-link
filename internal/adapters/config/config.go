@@ -13,6 +13,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/playmixer/short-link/internal/adapters/api"
+	"github.com/playmixer/short-link/internal/adapters/api/grpch"
 	"github.com/playmixer/short-link/internal/adapters/api/rest"
 	"github.com/playmixer/short-link/internal/adapters/storage"
 	"github.com/playmixer/short-link/internal/adapters/storage/database"
@@ -23,19 +24,20 @@ import (
 
 // Config конфигурация сервиса.
 type Config struct {
-	API           api.Config
-	Store         storage.Config
-	Shortner      shortner.Config
-	BaseURL       string `env:"BASE_URL"`
-	LogLevel      string `env:"LOG_LEVEL"`
-	ConfigPath    string `env:"CONFIG"`
-	TrastedSubnet string `env:"TRUSTED_SUBNET"`
+	API        api.Config
+	Store      storage.Config
+	Shortner   shortner.Config
+	LogLevel   string `env:"LOG_LEVEL"`
+	ConfigPath string `env:"CONFIG"`
 }
 
 // Init инициализирует конфигурацию сервиса.
 func Init() (*Config, error) {
 	cfg := Config{
-		API: api.Config{Rest: &rest.Config{}},
+		API: api.Config{
+			Rest: &rest.Config{},
+			GRPC: &grpch.Config{},
+		},
 		Store: storage.Config{
 			File:     &file.Config{},
 			Database: &database.Config{},
@@ -45,14 +47,14 @@ func Init() (*Config, error) {
 	cfg.Store.Database.SetLogger(zap.NewNop())
 
 	flag.StringVar(&cfg.API.Rest.Addr, "a", "localhost:8080", "address listen")
-	flag.StringVar(&cfg.BaseURL, "b", "http://localhost:8080", "base url")
+	flag.StringVar(&cfg.API.BaseURL, "b", "http://localhost:8080", "base url")
 	flag.StringVar(&cfg.LogLevel, "l", "info", "logger level")
 	flag.StringVar(&cfg.Store.File.StoragePath, "f", "", "storage file")
 	flag.StringVar(&cfg.Store.Database.DSN, "d", "", "database dsn")
 	flag.BoolVar(&cfg.API.Rest.HTTPSEnable, "s", false, "tls enable")
 	flag.StringVar(&cfg.ConfigPath, "c", "", "file configuration")
 	flag.StringVar(&cfg.ConfigPath, "config", "", "file configuration")
-	flag.StringVar(&cfg.TrastedSubnet, "t", "", "trunsted subnet")
+	flag.StringVar(&cfg.API.TrustedSubnet, "t", "", "trusted subnet")
 	flag.Parse()
 
 	_ = godotenv.Load(".env")
@@ -102,8 +104,8 @@ func fromFile(filepath string, cfg *Config) error {
 		return fmt.Errorf("failed parse configuration: %w", err)
 	}
 
-	if configuration.BaseURL != nil && cfg.BaseURL == "" {
-		cfg.BaseURL = *configuration.BaseURL
+	if configuration.BaseURL != nil && cfg.API.BaseURL == "" {
+		cfg.API.BaseURL = *configuration.BaseURL
 	}
 	if configuration.DatabaseDSN != nil && cfg.Store.Database.DSN == "" {
 		cfg.Store.Database.DSN = *configuration.DatabaseDSN
@@ -117,8 +119,8 @@ func fromFile(filepath string, cfg *Config) error {
 	if configuration.ServerAddress != nil && cfg.API.Rest.Addr == "" {
 		cfg.API.Rest.Addr = *configuration.ServerAddress
 	}
-	if configuration.TrustedSubnet != nil && cfg.TrastedSubnet == "" {
-		cfg.TrastedSubnet = *configuration.TrustedSubnet
+	if configuration.TrustedSubnet != nil && cfg.API.TrustedSubnet == "" {
+		cfg.API.TrustedSubnet = *configuration.TrustedSubnet
 	}
 
 	return nil

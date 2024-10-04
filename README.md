@@ -73,3 +73,45 @@ openssl ecparam -genkey -name secp384r1 -out server.key
 ```
 openssl req -new -x509 -sha256 -key server.key -out server.crt -days 3650
 ```
+
+## Установка PROTO Generate
+```
+go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+```
+```
+go get github.com/golang/protobuf/protoc-gen-go
+```
+## Обновить GRPC
+go get -u google.golang.org/grpc
+### windows
+https://github.com/protocolbuffers/protobuf/releases
+
+## Генерация сервиса GRPC
+выполнить в папке internal\adapters\api\grpch
+```
+protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative shorten.proto
+```
+
+
+# GRPC API
+## Auth
+### Login 
+*Request*:
+```
+{
+    "id": "identificator"
+}
+```
+*Response*:
+```
+{
+    "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1bmlxdWVJRCI6ImxhYm9ycGlzaWNpbmcifQ.mUisWUcaIUwo0bFBOdonZVj1Hm-7O6xBAJRocX-moPg"
+}
+```
+
+Для работы с api передать в метаданных "token" со значением *access_token*
+терубуют авторизацию: **NewShort, NewShorts, GetURLByShort, GetUserURLs, DeleteUserURLs**
+
+### GetStatus
+в матаданных "x-real-ip" передать ip из доверенной зоны

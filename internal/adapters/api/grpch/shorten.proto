@@ -1,0 +1,88 @@
+syntax = "proto3";
+
+package grpch;
+
+option go_package = "./grpch";
+
+service Shorten {
+    rpc Login(LoginRequest) returns (LoginResponse);
+    rpc NewShort(NewShortRequest) returns (NewShortResponse);
+    rpc NewShorts(NewShortsRequest) returns (NewShortsResponse);
+    rpc GetURLByShort(GetUrlByShortRequest) returns (GetURLByShortResponse);
+    rpc GetUserURLs(GetUserURLsRequest) returns (GetUserURLsResponse);
+    rpc DeleteUserURLs(DeleteUserURLsRequest) returns (DeleteUserURLsRespons);
+
+    rpc GetStatus(GetStatusRequest) returns (GetStatusResponse);
+}
+
+message LoginRequest {
+    string id = 10;
+}
+
+message LoginResponse {
+    string access_token = 1;
+}
+
+message NewShortRequest {
+    string original_url = 1;
+}
+
+message NewShortResponse {
+    string short = 1;
+    string error = 10;
+}
+
+message ShortenBatchRequest {
+    string correlation_id = 1;
+    string original_url = 10;
+}
+
+message NewShortsRequest {
+    repeated ShortenBatchRequest originals = 1;
+}
+
+message shortenBatchResponse {
+    string correlation_id = 1;
+    string short_url = 10;
+}
+
+message NewShortsResponse {
+    repeated shortenBatchResponse shorts = 1;
+    string error = 10;
+}
+
+message GetUserURLsRequest {}
+
+message shortenURLs {
+    string short_url = 1;
+    string original_url = 2;
+}
+
+message GetUserURLsResponse {
+    repeated shortenURLs urls = 1;
+    string error = 10;
+}
+
+message GetUrlByShortRequest {
+    string short_url = 1;
+}
+
+message GetURLByShortResponse {
+    string original_url = 1;
+    string error = 10;
+}
+
+message DeleteUserURLsRequest {
+    repeated string short_urls = 1;
+}
+
+message DeleteUserURLsRespons {
+    string error = 10;
+}
+
+message GetStatusRequest {}
+
+message GetStatusResponse {
+    int32 urls = 1;
+    int32 users = 2;
+}

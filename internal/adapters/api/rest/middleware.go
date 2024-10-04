@@ -74,11 +74,11 @@ func (s *Server) CheckCookies() gin.HandlerFunc {
 		var userCookie *http.Cookie
 		userCookie, err := c.Request.Cookie(CookieNameUserID)
 		if err == nil {
-			_, ok = s.verifyJWT(userCookie.Value)
+			_, ok = s.auth.VerifyJWT(userCookie.Value)
 		}
 		if err != nil || !ok {
 			uniqueID := strconv.Itoa(time.Now().Nanosecond())
-			signedCookie, err := s.CreateJWT(uniqueID)
+			signedCookie, err := s.auth.CreateJWT(uniqueID)
 			if err != nil {
 				s.log.Info("failed sign cookies", zap.Error(err))
 				c.Writer.WriteHeader(http.StatusInternalServerError)

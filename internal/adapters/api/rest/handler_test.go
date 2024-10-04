@@ -19,6 +19,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/playmixer/short-link/internal/adapters/api/rest"
+	"github.com/playmixer/short-link/internal/adapters/auth"
 	"github.com/playmixer/short-link/internal/adapters/config"
 	"github.com/playmixer/short-link/internal/adapters/models"
 	"github.com/playmixer/short-link/internal/adapters/storage"
@@ -119,8 +120,13 @@ func Test_mainHandle(t *testing.T) {
 		t.Errorf("failed initialize storage: %v", err)
 		return
 	}
+	authManager, err := auth.New(auth.SetSecretKey([]byte("")))
+	if err != nil {
+		t.Errorf("failed initializa auth manager: %v", err)
+		return
+	}
 	s := shortner.New(context.Background(), store)
-	srv := rest.New(s, rest.Addr(cfg.API.Rest.Addr), rest.BaseURL(cfg.BaseURL))
+	srv := rest.New(s, authManager, rest.Addr(cfg.API.Rest.Addr), rest.BaseURL(cfg.API.BaseURL))
 	router := srv.SetupRouter()
 
 	for _, tt := range tests {
@@ -129,7 +135,7 @@ func Test_mainHandle(t *testing.T) {
 			body := strings.NewReader(tt.want.Request)
 			r := httptest.NewRequest(http.MethodPost, "/", body)
 
-			signedCookie, err := srv.CreateJWT("1")
+			signedCookie, err := authManager.CreateJWT("1")
 			require.NoError(t, err)
 			r.AddCookie(&http.Cookie{
 				Name:  rest.CookieNameUserID,
@@ -187,8 +193,13 @@ func Test_shortHandle(t *testing.T) {
 		t.Errorf("failed initialize storage: %v", err)
 		return
 	}
+	authManager, err := auth.New(auth.SetSecretKey([]byte("")))
+	if err != nil {
+		t.Errorf("failed initializa auth manager: %v", err)
+		return
+	}
 	s := shortner.New(context.Background(), store)
-	srv := rest.New(s, rest.Addr(cfg.API.Rest.Addr), rest.BaseURL(cfg.BaseURL))
+	srv := rest.New(s, authManager, rest.Addr(cfg.API.Rest.Addr), rest.BaseURL(cfg.API.BaseURL))
 	router := srv.SetupRouter()
 
 	for _, tt := range tests {
@@ -196,7 +207,7 @@ func Test_shortHandle(t *testing.T) {
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest(http.MethodGet, "/QW23qq", http.NoBody)
 
-			signedCookie, err := srv.CreateJWT("1")
+			signedCookie, err := authManager.CreateJWT("1")
 			require.NoError(t, err)
 			r.AddCookie(&http.Cookie{
 				Name:  rest.CookieNameUserID,
@@ -292,8 +303,13 @@ func Test_apiShorten(t *testing.T) {
 		t.Errorf("failed initialize storage: %v", err)
 		return
 	}
+	authManager, err := auth.New(auth.SetSecretKey([]byte("")))
+	if err != nil {
+		t.Errorf("failed initializa auth manager: %v", err)
+		return
+	}
 	s := shortner.New(context.Background(), store)
-	srv := rest.New(s, rest.Addr(cfg.API.Rest.Addr), rest.BaseURL(cfg.BaseURL))
+	srv := rest.New(s, authManager, rest.Addr(cfg.API.Rest.Addr), rest.BaseURL(cfg.API.BaseURL))
 	router := srv.SetupRouter()
 
 	for _, tt := range tests {
@@ -306,7 +322,7 @@ func Test_apiShorten(t *testing.T) {
 			body := strings.NewReader(string(reqBody))
 			r := httptest.NewRequest(http.MethodPost, "/api/shorten", body)
 
-			signedCookie, err := srv.CreateJWT("1")
+			signedCookie, err := authManager.CreateJWT("1")
 			require.NoError(t, err)
 			r.AddCookie(&http.Cookie{
 				Name:  rest.CookieNameUserID,
@@ -367,8 +383,13 @@ func Test_apiPing(t *testing.T) {
 		t.Errorf("failed initialize storage: %v", err)
 		return
 	}
+	authManager, err := auth.New(auth.SetSecretKey([]byte("")))
+	if err != nil {
+		t.Errorf("failed initializa auth manager: %v", err)
+		return
+	}
 	s := shortner.New(context.Background(), store)
-	srv := rest.New(s, rest.Addr(cfg.API.Rest.Addr), rest.BaseURL(cfg.BaseURL))
+	srv := rest.New(s, authManager, rest.Addr(cfg.API.Rest.Addr), rest.BaseURL(cfg.API.BaseURL))
 	router := srv.SetupRouter()
 
 	for _, tt := range tests {
@@ -376,7 +397,7 @@ func Test_apiPing(t *testing.T) {
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest(http.MethodGet, "/ping", http.NoBody)
 
-			signedCookie, err := srv.CreateJWT("1")
+			signedCookie, err := authManager.CreateJWT("1")
 			require.NoError(t, err)
 			r.AddCookie(&http.Cookie{
 				Name:  rest.CookieNameUserID,
@@ -453,8 +474,13 @@ func Test_apiShortenBatch(t *testing.T) {
 		t.Errorf("failed initialize storage: %v", err)
 		return
 	}
+	authManager, err := auth.New(auth.SetSecretKey([]byte("")))
+	if err != nil {
+		t.Errorf("failed initializa auth manager: %v", err)
+		return
+	}
 	s := shortner.New(context.Background(), store)
-	srv := rest.New(s, rest.Addr(cfg.API.Rest.Addr), rest.BaseURL(cfg.BaseURL))
+	srv := rest.New(s, authManager, rest.Addr(cfg.API.Rest.Addr), rest.BaseURL(cfg.API.BaseURL))
 	router := srv.SetupRouter()
 
 	for _, tt := range tests {
@@ -467,7 +493,7 @@ func Test_apiShortenBatch(t *testing.T) {
 			body := strings.NewReader(string(reqBody))
 			r := httptest.NewRequest(http.MethodPost, "/api/shorten/batch", body)
 
-			signedCookie, err := srv.CreateJWT("1")
+			signedCookie, err := authManager.CreateJWT("1")
 			require.NoError(t, err)
 			r.AddCookie(&http.Cookie{
 				Name:  rest.CookieNameUserID,
@@ -535,8 +561,13 @@ func Test_apiDeleteUserURLs(t *testing.T) {
 		t.Errorf("failed initialize storage: %v", err)
 		return
 	}
+	authManager, err := auth.New(auth.SetSecretKey([]byte("")))
+	if err != nil {
+		t.Errorf("failed initializa auth manager: %v", err)
+		return
+	}
 	s := shortner.New(context.Background(), store)
-	srv := rest.New(s, rest.Addr(cfg.API.Rest.Addr), rest.BaseURL(cfg.BaseURL))
+	srv := rest.New(s, authManager, rest.Addr(cfg.API.Rest.Addr), rest.BaseURL(cfg.API.BaseURL))
 	router := srv.SetupRouter()
 
 	for _, tt := range tests {
@@ -550,7 +581,7 @@ func Test_apiDeleteUserURLs(t *testing.T) {
 			r := httptest.NewRequest(http.MethodDelete, "/api/user/urls", body)
 
 			if tt.want.StatusCode != http.StatusUnauthorized {
-				signedCookie, err := srv.CreateJWT("1")
+				signedCookie, err := authManager.CreateJWT("1")
 				require.NoError(t, err)
 				r.AddCookie(&http.Cookie{
 					Name:  rest.CookieNameUserID,
@@ -613,8 +644,13 @@ func Test_Gzip(t *testing.T) {
 		t.Errorf("failed initialize storage: %v", err)
 		return
 	}
+	authManager, err := auth.New(auth.SetSecretKey([]byte("")))
+	if err != nil {
+		t.Errorf("failed initializa auth manager: %v", err)
+		return
+	}
 	s := shortner.New(context.Background(), store)
-	srv := rest.New(s, rest.Addr(cfg.API.Rest.Addr), rest.BaseURL(cfg.BaseURL))
+	srv := rest.New(s, authManager, rest.Addr(cfg.API.Rest.Addr), rest.BaseURL(cfg.API.BaseURL))
 	router := srv.SetupRouter()
 
 	for _, tt := range tests {
@@ -633,7 +669,7 @@ func Test_Gzip(t *testing.T) {
 			r.Header.Add("Content-Encoding", "gzip")
 			r.Header.Add("Accept-Encoding", "gzip")
 
-			signedCookie, err := srv.CreateJWT("1")
+			signedCookie, err := authManager.CreateJWT("1")
 			require.NoError(t, err)
 			r.AddCookie(&http.Cookie{
 				Name:  rest.CookieNameUserID,
@@ -700,8 +736,13 @@ func TestServer_handlerAPIGetUserURLs(t *testing.T) {
 		t.Errorf("failed initialize storage: %v", err)
 		return
 	}
+	authManager, err := auth.New(auth.SetSecretKey([]byte("")))
+	if err != nil {
+		t.Errorf("failed initializa auth manager: %v", err)
+		return
+	}
 	s := shortner.New(context.Background(), store)
-	srv := rest.New(s, rest.Addr(cfg.API.Rest.Addr), rest.BaseURL(cfg.BaseURL))
+	srv := rest.New(s, authManager, rest.Addr(cfg.API.Rest.Addr), rest.BaseURL(cfg.API.BaseURL))
 	router := srv.SetupRouter()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -709,7 +750,7 @@ func TestServer_handlerAPIGetUserURLs(t *testing.T) {
 			r := httptest.NewRequest(http.MethodGet, "/api/user/urls", http.NoBody)
 			r.Header.Add("Accept-Encoding", "gzip")
 
-			signedCookie, err := srv.CreateJWT("1")
+			signedCookie, err := authManager.CreateJWT("1")
 			require.NoError(t, err)
 			r.AddCookie(&http.Cookie{
 				Name:  rest.CookieNameUserID,

@@ -11,7 +11,6 @@ import (
 	"github.com/gin-contrib/pprof"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
 	"go.uber.org/zap"
 
 	"github.com/playmixer/short-link/internal/adapters/models"
@@ -46,9 +45,15 @@ type Shortner interface {
 	GetState(ctx context.Context) (models.ShortenStats, error)
 }
 
+type AuthManager interface {
+	VerifyJWT(signedData string) (string, bool)
+	CreateJWT(uniqueID string) (string, error)
+}
+
 // Server - REST API сервер.
 type Server struct {
 	log           *zap.Logger
+	auth          AuthManager
 	short         Shortner
 	baseURL       string
 	trustedSubnet string
@@ -61,9 +66,10 @@ type Server struct {
 type Option func(s *Server)
 
 // New создает Server.
-func New(short Shortner, options ...Option) *Server {
+func New(short Shortner, auth AuthManager, options ...Option) *Server {
 	srv := &Server{
 		short:     short,
+		auth:      auth,
 		log:       zap.NewNop(),
 		secretKey: []byte("rest_secret_key"),
 	}
@@ -195,48 +201,11 @@ func (s *Server) baseLink(short string) string {
 	return fmt.Sprintf("%s/%s", s.baseURL, short)
 }
 
-// CreateJWT - Создает JWT ключ и записывает в него ID пользователя.
-func (s *Server) CreateJWT(uniqueID string) (string, error) {
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"uniqueID": uniqueID,
-	})
-	tokenString, err := token.SignedString(s.secretKey)
-	if err != nil {
-		return "", fmt.Errorf("failed signe token: %w", err)
-	}
-
-	return tokenString, nil
-}
-
-func (s *Server) verifyJWT(signedData string) (string, bool) {
-	token, err := jwt.Parse(signedData, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unknown signing method: %v", token.Header["alg"])
-		}
-		return s.secretKey, nil
-	})
-
-	if err != nil {
-		s.log.Debug("failed parse jwt token", zap.Error(err))
-		return "", false
-	}
-
-	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		if uniqueID, ok := claims["uniqueID"].(string); ok {
-			if uniqueID != "" {
-				return uniqueID, true
-			}
-		}
-	}
-
-	return "", false
-}
-
 func (s *Server) checkAuth(c *gin.Context) (userID string, err error) {
 	var ok bool
 	cookieUserID, err := c.Request.Cookie(CookieNameUserID)
 	if err == nil {
-		userID, ok = s.verifyJWT(cookieUserID.Value)
+		userID, ok = s.auth.VerifyJWT(cookieUserID.Value)
 	}
 	if err != nil {
 		return "", fmt.Errorf("failed reade user cookie: %w %w", errInvalidAuthCookie, err)
