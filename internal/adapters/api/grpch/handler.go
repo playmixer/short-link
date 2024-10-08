@@ -13,13 +13,14 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	pb "github.com/playmixer/short-link/internal/adapters/api/grpch/proto"
 	"github.com/playmixer/short-link/internal/adapters/models"
 	"github.com/playmixer/short-link/internal/adapters/storage/storeerror"
 )
 
 // Login - получаем токен по идентификатору.
-func (s *Server) Login(ctx context.Context, req *LoginRequest) (response *LoginResponse, err error) {
-	response = &LoginResponse{}
+func (s *Server) Login(ctx context.Context, req *pb.LoginRequest) (response *pb.LoginResponse, err error) {
+	response = &pb.LoginResponse{}
 
 	id := req.GetId()
 	if id == "" {
@@ -36,8 +37,8 @@ func (s *Server) Login(ctx context.Context, req *LoginRequest) (response *LoginR
 }
 
 // NewShort создает короткую ссылку.
-func (s *Server) NewShort(ctx context.Context, req *NewShortRequest) (response *NewShortResponse, err error) {
-	response = &NewShortResponse{}
+func (s *Server) NewShort(ctx context.Context, req *pb.NewShortRequest) (response *pb.NewShortResponse, err error) {
+	response = &pb.NewShortResponse{}
 
 	userID, err := s.getAuth(ctx)
 	if err != nil {
@@ -65,8 +66,8 @@ func (s *Server) NewShort(ctx context.Context, req *NewShortRequest) (response *
 }
 
 // NewShorts - создаем список коротких ссылок.
-func (s *Server) NewShorts(ctx context.Context, req *NewShortsRequest) (*NewShortsResponse, error) {
-	response := &NewShortsResponse{}
+func (s *Server) NewShorts(ctx context.Context, req *pb.NewShortsRequest) (*pb.NewShortsResponse, error) {
+	response := &pb.NewShortsResponse{}
 
 	userID, err := s.getAuth(ctx)
 	if err != nil {
@@ -92,7 +93,7 @@ func (s *Server) NewShorts(ctx context.Context, req *NewShortsRequest) (*NewShor
 	sLink, err := s.short.ShortyBatch(ctx, userID, payload)
 	for i, v := range sLink {
 		sLink[i].ShortURL = v.ShortURL
-		response.Shorts = append(response.Shorts, &ShortenBatchResponse{
+		response.Shorts = append(response.Shorts, &pb.ShortenBatchResponse{
 			CorrelationId: v.CorrelationID,
 			ShortUrl:      v.ShortURL,
 		})
@@ -109,8 +110,8 @@ func (s *Server) NewShorts(ctx context.Context, req *NewShortsRequest) (*NewShor
 }
 
 // GetURLByShort получить оригинальную ссылку по короткой.
-func (s *Server) GetURLByShort(ctx context.Context, req *GetUrlByShortRequest) (*GetURLByShortResponse, error) {
-	response := &GetURLByShortResponse{}
+func (s *Server) GetURLByShort(ctx context.Context, req *pb.GetUrlByShortRequest) (*pb.GetURLByShortResponse, error) {
+	response := &pb.GetURLByShortResponse{}
 
 	link, err := s.short.GetURL(ctx, req.GetShortUrl())
 	if err != nil {
@@ -127,8 +128,8 @@ func (s *Server) GetURLByShort(ctx context.Context, req *GetUrlByShortRequest) (
 }
 
 // GetUserURLs получить все ссылки пользователя.
-func (s *Server) GetUserURLs(ctx context.Context, req *GetUserURLsRequest) (*GetUserURLsResponse, error) {
-	response := &GetUserURLsResponse{}
+func (s *Server) GetUserURLs(ctx context.Context, req *pb.GetUserURLsRequest) (*pb.GetUserURLsResponse, error) {
+	response := &pb.GetUserURLsResponse{}
 
 	userID, err := s.getAuth(ctx)
 	if err != nil {
@@ -141,7 +142,7 @@ func (s *Server) GetUserURLs(ctx context.Context, req *GetUserURLsRequest) (*Get
 	}
 
 	for _, v := range links {
-		response.Urls = append(response.Urls, &ShortenURLs{
+		response.Urls = append(response.Urls, &pb.ShortenURLs{
 			ShortUrl:    v.ShortURL,
 			OriginalUrl: v.OriginalURL,
 		})
@@ -154,8 +155,8 @@ func (s *Server) GetUserURLs(ctx context.Context, req *GetUserURLsRequest) (*Get
 }
 
 // DeleteUserURLs удалить ссылки пользователя.
-func (s *Server) DeleteUserURLs(ctx context.Context, req *DeleteUserURLsRequest) (*DeleteUserURLsRespons, error) {
-	response := &DeleteUserURLsRespons{}
+func (s *Server) DeleteUserURLs(ctx context.Context, req *pb.DeleteUserURLsRequest) (*pb.DeleteUserURLsRespons, error) {
+	response := &pb.DeleteUserURLsRespons{}
 
 	userID, err := s.getAuth(ctx)
 	if err != nil {
@@ -175,8 +176,8 @@ func (s *Server) DeleteUserURLs(ctx context.Context, req *DeleteUserURLsRequest)
 }
 
 // GetStatus статистика сохраненных ссылок.
-func (s *Server) GetStatus(ctx context.Context, req *GetStatusRequest) (*GetStatusResponse, error) {
-	response := &GetStatusResponse{}
+func (s *Server) GetStatus(ctx context.Context, req *pb.GetStatusRequest) (*pb.GetStatusResponse, error) {
+	response := &pb.GetStatusResponse{}
 
 	access := true
 	network, err := netip.ParsePrefix(s.trustedSubnet)

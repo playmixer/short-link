@@ -11,6 +11,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 
+	pb "github.com/playmixer/short-link/internal/adapters/api/grpch/proto"
 	"github.com/playmixer/short-link/internal/adapters/models"
 )
 
@@ -35,7 +36,7 @@ type AuthManager interface {
 
 // Server - GRPC API сервер.
 type Server struct {
-	UnimplementedShortenServer
+	pb.UnimplementedShortenServer
 
 	log           *zap.Logger
 	s             *grpc.Server
@@ -90,7 +91,7 @@ func New(short Shortner, auth AuthManager, options ...Option) (*Server, error) {
 			srv.interceptorLogger,
 		),
 	)
-	srv.addr = "localhost:8080"
+	srv.addr = "localhost:8081"
 
 	for _, opt := range options {
 		opt(srv)
@@ -105,7 +106,7 @@ func (s *Server) Run() error {
 	if err != nil {
 		return fmt.Errorf("failed listen: %w", err)
 	}
-	RegisterShortenServer(s.s, s)
+	pb.RegisterShortenServer(s.s, s)
 	s.log.Info("GRPC service starting...", zap.String("address", s.addr))
 	if err := s.s.Serve(listen); err != nil {
 		return fmt.Errorf("failed to serve: %w", err)
@@ -143,7 +144,6 @@ func (s *Server) getMetadata(ctx context.Context, name string) (string, error) {
 	if !ok {
 		return "", errors.New("metadata is not provided")
 	}
-	fmt.Println(md)
 
 	name = strings.ToLower(name)
 	values := md[name]

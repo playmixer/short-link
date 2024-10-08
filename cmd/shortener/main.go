@@ -12,7 +12,8 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/playmixer/short-link/internal/adapters/api"
+	"github.com/playmixer/short-link/internal/adapters/api/grpch"
+	"github.com/playmixer/short-link/internal/adapters/api/rest"
 	"github.com/playmixer/short-link/internal/adapters/auth"
 	"github.com/playmixer/short-link/internal/adapters/config"
 	"github.com/playmixer/short-link/internal/adapters/logger"
@@ -64,16 +65,41 @@ func run() error {
 	}
 
 	short := shortner.New(ctx, store, shortner.SetLogger(lgr))
-	srv, err := api.New(short, authManager, lgr, cfg.API)
+
+	httpServer := rest.New(
+		short,
+		authManager,
+		rest.Addr(cfg.API.Rest.Addr),
+		rest.BaseURL(cfg.API.BaseURL),
+		rest.Logger(lgr),
+		rest.SecretKey([]byte(cfg.API.SecretKey)),
+		rest.HTTPSEnable(cfg.API.Rest.HTTPSEnable),
+		rest.TrastedSubnet(cfg.API.TrustedSubnet),
+	)
+
+	grpcServer, err := grpch.New(
+		short,
+		authManager,
+		grpch.Address(cfg.API.GRPC.Addr),
+		grpch.Logger(lgr),
+		grpch.SecretKey([]byte(cfg.API.SecretKey)),
+		grpch.TrustedSubnet(cfg.API.TrustedSubnet),
+	)
 	if err != nil {
-		return fmt.Errorf("failed initialize api: %w", err)
+		return fmt.Errorf("failed initialize grpc server: %w", err)
 	}
 
 	lgr.Info("Starting")
 	go func() {
-		err = srv.Run()
+		err = httpServer.Run()
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
-			lgr.Error("stop server", zap.Error(err))
+			lgr.Error("stop http server", zap.Error(err))
+		}
+	}()
+	go func() {
+		err = grpcServer.Run()
+		if err != nil {
+			lgr.Error("stop grpc server", zap.Error(err))
 		}
 	}()
 	<-ctx.Done()
@@ -81,9 +107,10 @@ func run() error {
 	ctxShutdown, cancel := context.WithTimeout(context.Background(), shutdownDelay)
 	defer cancel()
 
-	srv.Stop()    // отключаем api сервер.
-	short.Wait()  // ждем завершения горитин.
-	store.Close() // закрываем соединение с бд.
+	httpServer.Stop() // отключаем http сервер.
+	grpcServer.Stop() // отключаем grpc сервер.
+	short.Wait()      // ждем завершения горитин.
+	store.Close()     // закрываем соединение с бд.
 
 	<-ctxShutdown.Done()
 	lgr.Info("Service stoped")

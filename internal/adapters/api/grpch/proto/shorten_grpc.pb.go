@@ -4,7 +4,7 @@
 // - protoc             v5.28.0--rc2
 // source: shorten.proto
 
-package grpch
+package proto
 
 import (
 	context "context"
@@ -20,13 +20,13 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Shorten_Login_FullMethodName          = "/grpch.Shorten/Login"
-	Shorten_NewShort_FullMethodName       = "/grpch.Shorten/NewShort"
-	Shorten_NewShorts_FullMethodName      = "/grpch.Shorten/NewShorts"
-	Shorten_GetURLByShort_FullMethodName  = "/grpch.Shorten/GetURLByShort"
-	Shorten_GetUserURLs_FullMethodName    = "/grpch.Shorten/GetUserURLs"
-	Shorten_DeleteUserURLs_FullMethodName = "/grpch.Shorten/DeleteUserURLs"
-	Shorten_GetStatus_FullMethodName      = "/grpch.Shorten/GetStatus"
+	Shorten_Login_FullMethodName          = "/grpch.proto.Shorten/Login"
+	Shorten_NewShort_FullMethodName       = "/grpch.proto.Shorten/NewShort"
+	Shorten_NewShorts_FullMethodName      = "/grpch.proto.Shorten/NewShorts"
+	Shorten_GetURLByShort_FullMethodName  = "/grpch.proto.Shorten/GetURLByShort"
+	Shorten_GetUserURLs_FullMethodName    = "/grpch.proto.Shorten/GetUserURLs"
+	Shorten_DeleteUserURLs_FullMethodName = "/grpch.proto.Shorten/DeleteUserURLs"
+	Shorten_GetStatus_FullMethodName      = "/grpch.proto.Shorten/GetStatus"
 )
 
 // ShortenClient is the client API for Shorten service.
@@ -313,7 +313,7 @@ func _Shorten_GetStatus_Handler(srv interface{}, ctx context.Context, dec func(i
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var Shorten_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "grpch.Shorten",
+	ServiceName: "grpch.proto.Shorten",
 	HandlerType: (*ShortenServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{

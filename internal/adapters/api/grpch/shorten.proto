@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-package grpch;
+package grpch.proto;
 
-option go_package = "./grpch";
+option go_package = "./grpch/proto";
 
 service Shorten {
     rpc Login(LoginRequest) returns (LoginResponse);
@@ -16,7 +16,7 @@ service Shorten {
 }
 
 message LoginRequest {
-    string id = 10;
+    string id = 1;
 }
 
 message LoginResponse {
@@ -29,12 +29,12 @@ message NewShortRequest {
 
 message NewShortResponse {
     string short = 1;
-    string error = 10;
+    string error = 2;
 }
 
 message ShortenBatchRequest {
     string correlation_id = 1;
-    string original_url = 10;
+    string original_url = 2;
 }
 
 message NewShortsRequest {
@@ -43,12 +43,12 @@ message NewShortsRequest {
 
 message shortenBatchResponse {
     string correlation_id = 1;
-    string short_url = 10;
+    string short_url = 2;
 }
 
 message NewShortsResponse {
     repeated shortenBatchResponse shorts = 1;
-    string error = 10;
+    string error = 2;
 }
 
 message GetUserURLsRequest {}
@@ -60,7 +60,7 @@ message shortenURLs {
 
 message GetUserURLsResponse {
     repeated shortenURLs urls = 1;
-    string error = 10;
+    string error = 2;
 }
 
 message GetUrlByShortRequest {
@@ -69,7 +69,7 @@ message GetUrlByShortRequest {
 
 message GetURLByShortResponse {
     string original_url = 1;
-    string error = 10;
+    string error = 2;
 }
 
 message DeleteUserURLsRequest {
@@ -77,7 +77,7 @@ message DeleteUserURLsRequest {
 }
 
 message DeleteUserURLsRespons {
-    string error = 10;
+    string error = 2;
 }
 
 message GetStatusRequest {}
