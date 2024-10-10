@@ -2,6 +2,7 @@ package rest
 
 import (
 	"net/http"
+	"net/netip"
 	"strconv"
 	"strings"
 	"time"
@@ -73,11 +74,11 @@ func (s *Server) CheckCookies() gin.HandlerFunc {
 		var userCookie *http.Cookie
 		userCookie, err := c.Request.Cookie(CookieNameUserID)
 		if err == nil {
-			_, ok = s.verifyJWT(userCookie.Value)
+			_, ok = s.auth.VerifyJWT(userCookie.Value)
 		}
 		if err != nil || !ok {
 			uniqueID := strconv.Itoa(time.Now().Nanosecond())
-			signedCookie, err := s.CreateJWT(uniqueID)
+			signedCookie, err := s.auth.CreateJWT(uniqueID)
 			if err != nil {
 				s.log.Info("failed sign cookies", zap.Error(err))
 				c.Writer.WriteHeader(http.StatusInternalServerError)
@@ -106,6 +107,33 @@ func (s *Server) Auth() gin.HandlerFunc {
 			c.Abort()
 		}
 
+		c.Next()
+	}
+}
+
+// TrustedSubnet middleware проверка сети пользователя как доверенную.
+func (s *Server) TrustedSubnet() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		access := true
+		network, err := netip.ParsePrefix(s.trustedSubnet)
+		if err != nil {
+			s.log.Debug("trusted subnet is not valid", zap.Error(err), zap.String("subnet", s.trustedSubnet))
+			access = false
+		}
+		ipStr := c.Request.Header.Get("X-Real-IP")
+		ip, err := netip.ParseAddr(ipStr)
+		if err != nil {
+			s.log.Debug("IP address is not valid", zap.Error(err), zap.String("ip", ipStr))
+			access = false
+		}
+		if ok := network.Contains(ip); !ok {
+			access = false
+		}
+
+		if !access {
+			c.Writer.WriteHeader(http.StatusForbidden)
+			c.Abort()
+		}
 		c.Next()
 	}
 }

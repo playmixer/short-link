@@ -192,3 +192,18 @@ func (s *Store) HardDeleteURLs(ctx context.Context) error {
 
 	return nil
 }
+
+// GetState Получение статисики.
+func (s *Store) GetState(ctx context.Context) (urls int, users int, err error) {
+	var urlCount int
+	userMap := make(map[string]any)
+	for _, d := range s.data {
+		if d.IsDeleted {
+			continue
+		}
+		userMap[d.UserID] = struct{}{}
+		urlCount++
+	}
+
+	return urlCount, len(userMap), nil
+}

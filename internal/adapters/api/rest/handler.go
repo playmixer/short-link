@@ -267,3 +267,14 @@ func (s *Server) handlerAPIDeleteUserURLs(c *gin.Context) {
 
 	c.Writer.WriteHeader(http.StatusAccepted)
 }
+
+func (s *Server) handlerAPIInternalStats(c *gin.Context) {
+	stats, err := s.short.GetState(c.Request.Context())
+	if err != nil {
+		s.log.Error("failed get stats", zap.Error(err))
+		c.Writer.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	c.JSON(http.StatusOK, stats)
+}
